@@ -1,0 +1,21 @@
+services:
+  repeaterroute:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+      - repeater-data:/app/data
+    environment:
+      - DB_PATH=/app/data/repeaters.db
+      - JSON_PATH=/app/rptrs.json
+      - LISTEN_ADDR=:8080
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  repeater-data:

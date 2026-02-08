@@ -1,0 +1,11 @@
+root = "."
+
+[build]
+  cmd = "go build -o ./tmp/repeaterroute ."
+  bin = "./tmp/repeaterroute"
+  include_ext = ["go"]
+  exclude_dir = ["tmp", "static", "data"]
+  delay = 500
+
+[misc]
+  clean_on_exit = true
