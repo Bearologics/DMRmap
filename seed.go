@@ -24,6 +24,7 @@ type rawRepeater struct {
 	TsLinked    string      `json:"ts_linked"`
 	Trustee     string      `json:"trustee"`
 	IpscNetwork string      `json:"ipsc_network"`
+	MapInfo     string      `json:"map_info"`
 	Status      string      `json:"status"`
 }
 
@@ -40,12 +41,6 @@ func seedDatabase(dbPath, jsonPath string) error {
 
 	if _, err := db.Exec(schemaSQL); err != nil {
 		return fmt.Errorf("create schema: %w", err)
-	}
-
-	// Migration: add network column for existing databases
-	if _, err := db.Exec("ALTER TABLE repeaters ADD COLUMN network TEXT NOT NULL DEFAULT ''"); err == nil {
-		db.Exec("DELETE FROM repeaters")
-		log.Println("Added network column, re-seeding database")
 	}
 
 	var count int
@@ -75,15 +70,15 @@ func seedDatabase(dbPath, jsonPath string) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO repeaters
 		(id, callsign, frequency, band, lat, lng, city, state, country,
-		 color_code, offset, ts_linked, trustee, ipsc_network, network, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		 color_code, offset, ts_linked, trustee, ipsc_network, network, hotspot, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("prepare stmt: %w", err)
 	}
 	defer stmt.Close()
 
-	inserted, skipped := 0, 0
+	inserted, skipped, hotspots := 0, 0, 0
 	for _, r := range raw.Rptrs {
 		lat, lng, ok := parseCoords(r.Lat, r.Lng)
 		if !ok {
@@ -98,9 +93,14 @@ func seedDatabase(dbPath, jsonPath string) error {
 		band := classifyBand(freq)
 
 		network := classifyNetwork(r.IpscNetwork)
+		hotspot := 0
+		if isHotspot(r.Offset, r.City, r.MapInfo) {
+			hotspot = 1
+			hotspots++
+		}
 		if _, err := stmt.Exec(r.ID, r.Callsign, freq, band, lat, lng,
 			r.City, r.State, r.Country, r.ColorCode, r.Offset,
-			r.TsLinked, r.Trustee, r.IpscNetwork, network, r.Status); err != nil {
+			r.TsLinked, r.Trustee, r.IpscNetwork, network, hotspot, r.Status); err != nil {
 			log.Printf("Warning: skipping repeater %d (%s): %v", r.ID, r.Callsign, err)
 			skipped++
 			continue
@@ -112,7 +112,7 @@ func seedDatabase(dbPath, jsonPath string) error {
 		return fmt.Errorf("commit: %w", err)
 	}
 
-	log.Printf("Seeded %d repeaters (%d skipped)", inserted, skipped)
+	log.Printf("Seeded %d repeaters (%d skipped, %d hotspots)", inserted, skipped, hotspots)
 	return nil
 }
 
@@ -170,6 +170,23 @@ func classifyBand(freq float64) string {
 		return "70cm"
 	}
 	return "other"
+}
+
+func isHotspot(offset, city, mapInfo string) bool {
+	// Zero offset indicates simplex (likely a personal hotspot)
+	if off, err := strconv.ParseFloat(strings.TrimSpace(offset), 64); err == nil && math.Abs(off) < 0.01 {
+		return true
+	}
+	// Hotspot keywords in city or map_info
+	check := strings.ToLower(city) + " " + strings.ToLower(mapInfo)
+	if strings.Contains(check, "hotspot") ||
+		strings.Contains(check, "pistar") ||
+		strings.Contains(check, "pi-star") ||
+		strings.Contains(check, "mmdvm") ||
+		strings.Contains(check, "simplex") {
+		return true
+	}
+	return false
 }
 
 func classifyNetwork(raw string) string {

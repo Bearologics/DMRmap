@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS repeaters (
     trustee      TEXT NOT NULL DEFAULT '',
     ipsc_network TEXT NOT NULL DEFAULT '',
     network      TEXT NOT NULL DEFAULT '',
+    hotspot      INTEGER NOT NULL DEFAULT 0,
     status       TEXT NOT NULL DEFAULT 'ACTIVE'
 );
 
@@ -49,6 +50,7 @@ type Repeater struct {
 	Trustee     string  `json:"trustee"`
 	IpscNetwork string  `json:"ipsc_network"`
 	Network     string  `json:"network"`
+	Hotspot     int     `json:"hotspot"`
 	Status      string  `json:"status"`
 }
 
@@ -64,9 +66,9 @@ func openDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band string, networks []string) ([]Repeater, error) {
+func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band string, networks []string, showHotspots bool) ([]Repeater, error) {
 	query := `SELECT id, callsign, frequency, band, lat, lng, city, state, country,
-		color_code, offset, ts_linked, trustee, ipsc_network, network, status
+		color_code, offset, ts_linked, trustee, ipsc_network, network, hotspot, status
 		FROM repeaters WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?`
 
 	args := []interface{}{minLat, maxLat, minLng, maxLng}
@@ -80,6 +82,10 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 		args = append(args, "70cm")
 	default:
 		query += " AND band IN ('2m', '70cm')"
+	}
+
+	if !showHotspots {
+		query += " AND hotspot = 0"
 	}
 
 	// Network filter: only apply when not all 4 categories are selected
@@ -118,7 +124,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 		if err := rows.Scan(&r.ID, &r.Callsign, &r.Frequency, &r.Band,
 			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
 			&r.ColorCode, &r.Offset, &r.TsLinked, &r.Trustee,
-			&r.IpscNetwork, &r.Network, &r.Status); err != nil {
+			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
@@ -131,7 +137,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 }
 
 // Route corridor query: find repeaters within corridorKm of a polyline.
-func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string) ([]Repeater, error) {
+func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string, showHotspots bool) ([]Repeater, error) {
 	if len(points) == 0 {
 		return []Repeater{}, nil
 	}
@@ -162,7 +168,7 @@ func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float6
 	maxLng += lngPad
 
 	// Fetch candidates from bounding box
-	candidates, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks)
+	candidates, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks, showHotspots)
 	if err != nil {
 		return nil, err
 	}

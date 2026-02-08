@@ -45,6 +45,7 @@
     var netDmrplus = document.getElementById("net-dmrplus");
     var netTgif = document.getElementById("net-tgif");
     var netOther = document.getElementById("net-other");
+    var showHotspots = document.getElementById("show-hotspots");
     var countEl = document.getElementById("count");
     var fromInput = document.getElementById("route-from");
     var toInput = document.getElementById("route-to");
@@ -317,6 +318,7 @@
             maxLng: bounds.getEast(),
             band: getSelectedBand(),
             network: getSelectedNetworks(),
+            hotspots: showHotspots.checked ? "1" : "0",
         });
 
         fetch("/api/repeaters?" + params, { signal: controller.signal })
@@ -397,6 +399,7 @@
                 band: getSelectedBand(),
                 corridor: 10,
                 network: getSelectedNetworks() === "all" ? [] : getSelectedNetworks().split(","),
+                hotspots: showHotspots.checked,
             }),
         })
             .then(function (resp) {
@@ -492,6 +495,11 @@
             if (isRouteMode) fetchRouteRepeaters();
             else fetchRepeaters();
         });
+    });
+
+    showHotspots.addEventListener("change", function () {
+        if (isRouteMode) fetchRouteRepeaters();
+        else fetchRepeaters();
     });
 
     routeBtn.addEventListener("click", findRoute);
