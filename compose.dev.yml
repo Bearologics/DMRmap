@@ -9,7 +9,8 @@ services:
       - .:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
-      - ./data:/app/data
+    tmpfs:
+      - /app/data
     environment:
       - DB_PATH=/app/data/repeaters.db
       - JSON_PATH=/app/rptrs.json

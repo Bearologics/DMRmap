@@ -1,13 +1,10 @@
 services:
   dmrmap:
     build: .
-    volumes:
-      - repeater-data:/app/data
+    tmpfs:
+      - /app/data
     environment:
       - DB_PATH=/app/data/repeaters.db
       - JSON_PATH=/app/rptrs.json
       - LISTEN_ADDR=:8080
     restart: unless-stopped
-
-volumes:
-  repeater-data:
