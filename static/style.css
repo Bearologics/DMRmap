@@ -24,19 +24,32 @@ html, body {
     border-radius: 8px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     padding: 10px 14px;
-    display: flex;
-    gap: 12px;
+    width: 260px;
 }
 
-#controls label {
+.controls-row {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+}
+
+.band-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    min-height: 44px;
+    min-height: 36px;
     user-select: none;
+}
+
+.band-2m {
+    color: #1976D2;
+}
+
+.band-70cm {
+    color: #F57C00;
 }
 
 #controls input[type="checkbox"] {
@@ -45,34 +58,78 @@ html, body {
     cursor: pointer;
 }
 
-#band-2m:checked + span,
-#controls label:first-child {
-    color: #1976D2;
+.count {
+    margin-left: auto;
+    font-size: 12px;
+    color: #888;
+    white-space: nowrap;
 }
 
-#controls label:last-child {
-    color: #F57C00;
+.route-row {
+    margin-top: 6px;
 }
 
-#status-bar {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 8px 16px;
+.route-row input[type="text"] {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
     font-size: 13px;
-    color: #333;
-    text-align: center;
-    backdrop-filter: blur(4px);
+    outline: none;
 }
 
-#status-bar.truncated {
-    background: rgba(255, 193, 7, 0.9);
-    color: #333;
-    font-weight: 600;
+.route-row input[type="text"]:focus {
+    border-color: #4CAF50;
 }
+
+.route-row button {
+    flex: 1;
+    padding: 7px 0;
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    min-height: 36px;
+}
+
+#route-btn {
+    background: #4CAF50;
+    color: white;
+}
+
+#route-btn:hover {
+    background: #43A047;
+}
+
+#route-btn:disabled {
+    background: #A5D6A7;
+    cursor: default;
+}
+
+#clear-btn {
+    background: #eee;
+    color: #333;
+}
+
+#clear-btn:hover {
+    background: #ddd;
+}
+
+.attribution {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+    font-size: 10px;
+    color: #999;
+    line-height: 1.4;
+}
+
+.attribution a {
+    color: #888;
+}
+
+/* Popups */
 
 .rptr-popup h3 {
     margin: 0 0 6px 0;
@@ -120,16 +177,8 @@ html, body {
     #controls {
         top: 10px;
         right: 10px;
+        left: 10px;
+        width: auto;
         padding: 8px 10px;
-        gap: 8px;
-    }
-
-    #controls label {
-        font-size: 13px;
-    }
-
-    #status-bar {
-        font-size: 12px;
-        padding: 6px 12px;
     }
 }

@@ -11,10 +11,26 @@
 <body>
     <div id="map"></div>
     <div id="controls">
-        <label><input type="checkbox" id="band-2m" checked> 2m</label>
-        <label><input type="checkbox" id="band-70cm" checked> 70cm</label>
+        <div class="controls-row">
+            <label class="band-label band-2m"><input type="checkbox" id="band-2m" checked> 2m</label>
+            <label class="band-label band-70cm"><input type="checkbox" id="band-70cm" checked> 70cm</label>
+            <span id="count" class="count"></span>
+        </div>
+        <div class="controls-row route-row">
+            <input type="text" id="route-from" placeholder="From address" />
+        </div>
+        <div class="controls-row route-row">
+            <input type="text" id="route-to" placeholder="To address" />
+        </div>
+        <div class="controls-row route-row">
+            <button id="route-btn">Route</button>
+            <button id="clear-btn">Clear</button>
+        </div>
+        <div class="attribution">
+            Data from <a href="https://radioid.net/database/dumps" target="_blank" rel="noopener">radioid.net</a>.
+            Not affiliated with or endorsed by RadioID.
+        </div>
     </div>
-    <div id="status-bar">Loading...</div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="app.js"></script>

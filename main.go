@@ -27,6 +27,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/repeaters", handleRepeaters(db))
+	mux.HandleFunc("/api/repeaters/route", handleRouteRepeaters(db))
 	mux.Handle("/", http.FileServer(http.Dir("static")))
 
 	log.Printf("Listening on %s", addr)
