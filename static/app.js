@@ -14,6 +14,10 @@
     var routeLayer = null;
     var routePoints = null; // stored [lat, lng] pairs for re-fetching on band change
     var isRouteMode = false;
+    var isPinMode = false;
+    var pinMarker = null;
+    var pinCircle = null;
+    var pinLatLng = null;
     var debounceTimer = null;
     var controller = null;
 
@@ -30,6 +34,10 @@
     var toInput = document.getElementById("route-to");
     var routeBtn = document.getElementById("route-btn");
     var clearBtn = document.getElementById("clear-btn");
+    var pinControlsEl = document.getElementById("pin-controls");
+    var pinRadiusInput = document.getElementById("pin-radius");
+    var pinClearBtn = document.getElementById("pin-clear");
+    var pinListEl = document.getElementById("pin-list");
 
     clearBtn.style.display = "none";
 
@@ -278,7 +286,7 @@
 
     // === Viewport mode ===
     function fetchRepeaters() {
-        if (isRouteMode) return;
+        if (isRouteMode || isPinMode) return;
 
         if (getSelectedNetworks() === "none") {
             markerLayer.clearLayers();
@@ -401,6 +409,7 @@
         var toAddr = toInput.value.trim();
         if (!fromAddr || !toAddr) return;
 
+        if (isPinMode) clearPin();
         routeBtn.disabled = true;
         showStatus("Geocoding...");
 
@@ -453,32 +462,130 @@
         fetchRepeaters();
     }
 
+    // === Pin mode ===
+    function fetchPinRepeaters() {
+        if (!pinLatLng) return;
+
+        if (getSelectedNetworks() === "none") {
+            markerLayer.clearLayers();
+            pinListEl.innerHTML = "";
+            showCount(0);
+            return;
+        }
+
+        showStatus("Loading...");
+        var params = new URLSearchParams({
+            lat: pinLatLng.lat,
+            lng: pinLatLng.lng,
+            radius: pinRadiusInput.value,
+            band: getSelectedBand(),
+            network: getSelectedNetworks(),
+            hotspots: showHotspots.checked ? "1" : "0",
+        });
+
+        fetch("/api/repeaters/radius?" + params)
+            .then(function (resp) {
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
+                return resp.json();
+            })
+            .then(function (data) {
+                displayRepeaters(data.repeaters);
+                showCount(data.count);
+                renderPinList(data.repeaters);
+            })
+            .catch(function (err) {
+                console.error("Pin fetch error:", err);
+                showStatus("Error");
+            });
+    }
+
+    function renderPinList(repeaters) {
+        pinListEl.innerHTML = "";
+        repeaters.forEach(function (r) {
+            var item = document.createElement("div");
+            item.className = "pin-list-item";
+            var bandColor = r.band === "2m" ? "#1976D2" : "#D32F2F";
+            item.innerHTML =
+                '<span class="callsign">' + escapeHtml(r.callsign) + "</span>" +
+                '<span class="freq" style="color:' + bandColor + '">' + r.frequency.toFixed(4) + "</span>" +
+                '<span class="dist">' + r.distance + " km</span>";
+            item.addEventListener("click", function () {
+                map.setView([r.lat, r.lng], 14);
+                markerLayer.eachLayer(function (layer) {
+                    if (layer.getLatLng &&
+                        layer.getLatLng().lat === r.lat &&
+                        layer.getLatLng().lng === r.lng) {
+                        layer.openPopup();
+                    }
+                });
+            });
+            pinListEl.appendChild(item);
+        });
+    }
+
+    function placePin(latlng) {
+        // Clear route mode if active
+        if (isRouteMode) clearRoute();
+
+        isPinMode = true;
+        pinLatLng = latlng;
+
+        if (pinMarker) map.removeLayer(pinMarker);
+        if (pinCircle) map.removeLayer(pinCircle);
+
+        pinMarker = L.marker(latlng).addTo(map);
+        pinCircle = L.circle(latlng, {
+            radius: pinRadiusInput.value * 1000,
+            color: "#4CAF50",
+            weight: 2,
+            fillOpacity: 0.06,
+        }).addTo(map);
+
+        pinControlsEl.style.display = "";
+        fetchPinRepeaters();
+    }
+
+    function clearPin() {
+        if (pinMarker) { map.removeLayer(pinMarker); pinMarker = null; }
+        if (pinCircle) { map.removeLayer(pinCircle); pinCircle = null; }
+        pinLatLng = null;
+        isPinMode = false;
+        pinControlsEl.style.display = "none";
+        pinListEl.innerHTML = "";
+        fetchRepeaters();
+    }
+
     // === Events ===
     map.on("moveend", function () {
         clearTimeout(debounceTimer);
         debounceTimer = setTimeout(fetchRepeaters, 150);
     });
 
-    band2m.addEventListener("change", function () {
-        if (isRouteMode) fetchRouteRepeaters();
-        else fetchRepeaters();
+    map.on("click", function (e) {
+        placePin(e.latlng);
     });
 
-    band70cm.addEventListener("change", function () {
-        if (isRouteMode) fetchRouteRepeaters();
+    function refetchActive() {
+        if (isPinMode) fetchPinRepeaters();
+        else if (isRouteMode) fetchRouteRepeaters();
         else fetchRepeaters();
-    });
+    }
+
+    band2m.addEventListener("change", refetchActive);
+    band70cm.addEventListener("change", refetchActive);
 
     [netBm, netDmrplus, netTgif, netOther].forEach(function (cb) {
-        cb.addEventListener("change", function () {
-            if (isRouteMode) fetchRouteRepeaters();
-            else fetchRepeaters();
-        });
+        cb.addEventListener("change", refetchActive);
     });
 
-    showHotspots.addEventListener("change", function () {
-        if (isRouteMode) fetchRouteRepeaters();
-        else fetchRepeaters();
+    showHotspots.addEventListener("change", refetchActive);
+
+    pinClearBtn.addEventListener("click", clearPin);
+
+    pinRadiusInput.addEventListener("change", function () {
+        if (!pinLatLng) return;
+        if (pinCircle) pinCircle.setRadius(pinRadiusInput.value * 1000);
+        fetchPinRepeaters();
     });
 
     routeBtn.addEventListener("click", findRoute);

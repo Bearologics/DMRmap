@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"math"
+	"sort"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -180,6 +181,36 @@ func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float6
 			results = append(results, r)
 		}
 	}
+	return results, nil
+}
+
+// Radius query: find repeaters within radiusKm of a point, sorted by distance.
+type RepeaterWithDistance struct {
+	Repeater
+	Distance float64 `json:"distance"`
+}
+
+func queryRepeatersInRadius(db *sql.DB, lat, lng, radiusKm float64, band string, networks []string, showHotspots bool) ([]RepeaterWithDistance, error) {
+	latPad := radiusKm / 111.32
+	lngPad := radiusKm / (111.32 * math.Cos(lat*math.Pi/180))
+
+	candidates, err := queryRepeaters(db, lat-latPad, lat+latPad, lng-lngPad, lng+lngPad, band, networks, showHotspots)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []RepeaterWithDistance
+	for _, r := range candidates {
+		d := haversineKm(lat, lng, r.Lat, r.Lng)
+		if d <= radiusKm {
+			results = append(results, RepeaterWithDistance{Repeater: r, Distance: math.Round(d*10) / 10})
+		}
+	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Distance < results[j].Distance
+	})
+
 	return results, nil
 }
 

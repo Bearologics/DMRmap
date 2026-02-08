@@ -332,6 +332,91 @@ html, body {
     color: var(--text-fainter);
 }
 
+.pin-controls {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-light);
+}
+
+.pin-header {
+    justify-content: space-between;
+}
+
+.pin-radius-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.pin-radius-label input {
+    width: 52px;
+    padding: 3px 4px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 12px;
+    text-align: right;
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.pin-clear-btn {
+    background: var(--clear-btn-bg);
+    color: var(--text-muted);
+    border: none;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+.pin-clear-btn:hover {
+    background: var(--clear-btn-hover);
+}
+
+.pin-list {
+    max-height: 220px;
+    overflow-y: auto;
+    margin-top: 4px;
+}
+
+.pin-list-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    padding: 4px 2px;
+    border-bottom: 1px solid var(--border-lighter);
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.pin-list-item:last-child {
+    border-bottom: none;
+}
+
+.pin-list-item:hover {
+    background: var(--hover-bg);
+}
+
+.pin-list-item .callsign {
+    font-weight: 600;
+    color: var(--text);
+    min-width: 70px;
+}
+
+.pin-list-item .freq {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.pin-list-item .dist {
+    margin-left: auto;
+    color: var(--text-fainter);
+    font-size: 11px;
+    white-space: nowrap;
+}
+
 .attribution {
     margin-top: 8px;
     padding-top: 8px;

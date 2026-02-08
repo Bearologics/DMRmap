@@ -27,6 +27,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/repeaters", handleRepeaters(db))
+	mux.HandleFunc("/api/repeaters/radius", handleRadiusRepeaters(db))
 	mux.HandleFunc("/api/repeaters/route", handleRouteRepeaters(db))
 	mux.Handle("/", http.FileServer(http.Dir("static")))
 

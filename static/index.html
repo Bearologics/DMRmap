@@ -37,6 +37,15 @@
             <button id="route-btn">Route</button>
             <button id="clear-btn">Clear</button>
         </div>
+        <div id="pin-controls" class="pin-controls" style="display:none">
+            <div class="controls-row pin-header">
+                <label class="pin-radius-label">Radius
+                    <input type="number" id="pin-radius" value="100" min="1" max="500" step="10" /> km
+                </label>
+                <button id="pin-clear" class="pin-clear-btn">Clear pin</button>
+            </div>
+            <div id="pin-list" class="pin-list"></div>
+        </div>
         <div id="coords" class="coords-row"></div>
         <div class="attribution">
             Repeater data provided by <a href="https://radioid.net/database/dumps" target="_blank" rel="noopener">RadioID</a>.
