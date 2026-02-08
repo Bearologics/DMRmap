@@ -224,7 +224,7 @@
     function buildPopup(r) {
         var bandClass = r.band === "2m" ? "band-2m" : "band-70cm";
         var html = '<div class="rptr-popup">';
-        html += "<h3>" + escapeHtml(r.callsign) + "</h3>";
+        html += '<h3><a href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + "</a></h3>";
         html += "<table>";
         html +=
             "<tr><td>Freq</td><td>" +
@@ -506,10 +506,11 @@
             item.className = "pin-list-item";
             var bandColor = r.band === "2m" ? "#1976D2" : "#D32F2F";
             item.innerHTML =
-                '<span class="callsign">' + escapeHtml(r.callsign) + "</span>" +
+                '<a class="callsign" href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + "</a>" +
                 '<span class="freq" style="color:' + bandColor + '">' + r.frequency.toFixed(4) + "</span>" +
                 '<span class="dist">' + r.distance + " km</span>";
-            item.addEventListener("click", function () {
+            item.addEventListener("click", function (e) {
+                if (e.target.closest("a")) return;
                 map.setView([r.lat, r.lng], 14);
                 markerLayer.eachLayer(function (layer) {
                     if (layer.getLatLng &&

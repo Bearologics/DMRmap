@@ -403,6 +403,11 @@ html, body {
     font-weight: 600;
     color: var(--text);
     min-width: 70px;
+    text-decoration: none;
+}
+
+.pin-list-item .callsign:hover {
+    text-decoration: underline;
 }
 
 .pin-list-item .freq {
@@ -435,7 +440,15 @@ html, body {
 .rptr-popup h3 {
     margin: 0 0 6px 0;
     font-size: 15px;
+}
+
+.rptr-popup h3 a {
     color: var(--popup-heading);
+    text-decoration: none;
+}
+
+.rptr-popup h3 a:hover {
+    text-decoration: underline;
 }
 
 .rptr-popup table {
