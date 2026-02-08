@@ -3,8 +3,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    expose:
-      - 8080
     volumes:
       - .:/app
       - go-mod-cache:/go/pkg/mod
