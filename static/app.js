@@ -28,6 +28,113 @@
 
     clearBtn.style.display = "none";
 
+    // === Autocomplete ===
+    function setupAutocomplete(input, listEl) {
+        var acTimer = null;
+        var acController = null;
+        var activeIdx = -1;
+
+        function closeList() {
+            listEl.classList.remove("open");
+            listEl.innerHTML = "";
+            activeIdx = -1;
+        }
+
+        function selectItem(displayName) {
+            input.value = displayName;
+            closeList();
+        }
+
+        function updateActive() {
+            var items = listEl.querySelectorAll("li");
+            items.forEach(function (li, i) {
+                li.classList.toggle("active", i === activeIdx);
+            });
+            if (activeIdx >= 0 && items[activeIdx]) {
+                items[activeIdx].scrollIntoView({ block: "nearest" });
+            }
+        }
+
+        input.addEventListener("input", function () {
+            clearTimeout(acTimer);
+            if (acController) acController.abort();
+            var q = input.value.trim();
+            if (q.length < 3) {
+                closeList();
+                return;
+            }
+            acTimer = setTimeout(function () {
+                acController = new AbortController();
+                fetch(
+                    "https://nominatim.openstreetmap.org/search?" +
+                        new URLSearchParams({
+                            q: q,
+                            format: "json",
+                            limit: "5",
+                            addressdetails: "0",
+                        }),
+                    { signal: acController.signal }
+                )
+                    .then(function (r) { return r.json(); })
+                    .then(function (results) {
+                        listEl.innerHTML = "";
+                        activeIdx = -1;
+                        if (!results.length) {
+                            closeList();
+                            return;
+                        }
+                        results.forEach(function (item) {
+                            var li = document.createElement("li");
+                            var parts = item.display_name.split(", ");
+                            var main = parts.slice(0, 2).join(", ");
+                            var sub = parts.slice(2).join(", ");
+                            li.innerHTML =
+                                '<span class="ac-main">' + escapeHtml(main) + "</span>" +
+                                (sub ? '<br><span class="ac-sub">' + escapeHtml(sub) + "</span>" : "");
+                            li.addEventListener("mousedown", function (e) {
+                                e.preventDefault();
+                                selectItem(item.display_name);
+                            });
+                            listEl.appendChild(li);
+                        });
+                        listEl.classList.add("open");
+                    })
+                    .catch(function (err) {
+                        if (err.name !== "AbortError") closeList();
+                    });
+            }, 300);
+        });
+
+        input.addEventListener("keydown", function (e) {
+            if (!listEl.classList.contains("open")) return;
+            var items = listEl.querySelectorAll("li");
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                activeIdx = Math.min(activeIdx + 1, items.length - 1);
+                updateActive();
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                activeIdx = Math.max(activeIdx - 1, 0);
+                updateActive();
+            } else if (e.key === "Enter" && activeIdx >= 0) {
+                e.preventDefault();
+                e.stopPropagation();
+                var parts = items[activeIdx].querySelector(".ac-main").textContent;
+                var sub = items[activeIdx].querySelector(".ac-sub");
+                selectItem(parts + (sub ? ", " + sub.textContent : ""));
+            } else if (e.key === "Escape") {
+                closeList();
+            }
+        });
+
+        input.addEventListener("blur", function () {
+            setTimeout(closeList, 150);
+        });
+    }
+
+    setupAutocomplete(fromInput, document.getElementById("ac-from"));
+    setupAutocomplete(toInput, document.getElementById("ac-to"));
+
     // === Utilities ===
     function getSelectedBand() {
         var has2m = band2m.checked;
