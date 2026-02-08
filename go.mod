@@ -1,4 +1,4 @@
-module repeaterroute
+module dmrmap
 
 go 1.25.7
 

@@ -1,8 +1,8 @@
 root = "."
 
 [build]
-  cmd = "go build -o ./tmp/repeaterroute ."
-  bin = "./tmp/repeaterroute"
+  cmd = "go build -o ./tmp/dmrmap ."
+  bin = "./tmp/dmrmap"
   include_ext = ["go"]
   exclude_dir = ["tmp", "static", "data"]
   delay = 500

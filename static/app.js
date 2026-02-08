@@ -72,6 +72,7 @@
                             format: "json",
                             limit: "5",
                             addressdetails: "0",
+                            "accept-language": navigator.language,
                         }),
                     { signal: acController.signal }
                 )
@@ -134,6 +135,39 @@
 
     setupAutocomplete(fromInput, document.getElementById("ac-from"));
     setupAutocomplete(toInput, document.getElementById("ac-to"));
+
+    // === Coordinates display ===
+    var coordsEl = document.getElementById("coords");
+
+    function toMaidenhead(lat, lng) {
+        lng = lng + 180;
+        lat = lat + 90;
+        var loc = "";
+        loc += String.fromCharCode(65 + Math.floor(lng / 20));
+        loc += String.fromCharCode(65 + Math.floor(lat / 10));
+        lng = (lng % 20);
+        lat = (lat % 10);
+        loc += Math.floor(lng / 2);
+        loc += Math.floor(lat);
+        lng = (lng % 2) * 60;
+        lat = (lat % 1) * 60;
+        loc += String.fromCharCode(97 + Math.floor(lng / 5));
+        loc += String.fromCharCode(97 + Math.floor(lat / 2.5));
+        return loc;
+    }
+
+    map.on("mousemove", function (e) {
+        var lat = e.latlng.lat;
+        var lng = e.latlng.lng;
+        var grid = toMaidenhead(lat, lng);
+        coordsEl.innerHTML =
+            lat.toFixed(5) + ", " + lng.toFixed(5) +
+            ' <span class="maidenhead">' + grid + "</span>";
+    });
+
+    map.on("mouseout", function () {
+        coordsEl.innerHTML = "";
+    });
 
     // === Utilities ===
     function getSelectedBand() {
@@ -267,6 +301,7 @@
                     q: address,
                     format: "json",
                     limit: "1",
+                    "accept-language": navigator.language,
                 })
         )
             .then(function (resp) {

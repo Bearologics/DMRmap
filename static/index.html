@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RepeaterRoute</title>
+    <title>DMRmap</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <link rel="stylesheet" href="style.css" />
@@ -28,9 +28,14 @@
             <button id="route-btn">Route</button>
             <button id="clear-btn">Clear</button>
         </div>
+        <div id="coords" class="coords-row"></div>
         <div class="attribution">
-            Data from <a href="https://radioid.net/database/dumps" target="_blank" rel="noopener">radioid.net</a>.
-            Not affiliated with or endorsed by RadioID.
+            Repeater data provided by <a href="https://radioid.net/database/dumps" target="_blank" rel="noopener">RadioID</a>.
+            Not affiliated with or endorsed by RadioID.<br>
+            Geocoding by <a href="https://nominatim.openstreetmap.org" target="_blank" rel="noopener">Nominatim</a>.
+            Routing by <a href="https://project-osrm.org" target="_blank" rel="noopener">OSRM</a>.
+            Map by <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.<br>
+            Built by DA6KM. <a href="https://git.kida.io/marcus/DMRmap" target="_blank" rel="noopener">Source code</a>.
         </div>
     </div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"

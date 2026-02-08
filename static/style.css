@@ -167,6 +167,19 @@ html, body {
     background: #ddd;
 }
 
+.coords-row {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #666;
+    font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+    line-height: 1.5;
+    min-height: 1.5em;
+}
+
+.coords-row .maidenhead {
+    color: #999;
+}
+
 .attribution {
     margin-top: 8px;
     padding-top: 8px;
