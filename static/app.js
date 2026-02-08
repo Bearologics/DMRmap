@@ -1,6 +1,27 @@
 (function () {
     "use strict";
 
+    // === Theme ===
+    var themeToggle = document.getElementById("theme-toggle");
+
+    function applyTheme(dark) {
+        document.documentElement.classList.toggle("dark", dark);
+        themeToggle.textContent = dark ? "\u2600" : "\u263E";
+        themeToggle.title = dark ? "Switch to light mode" : "Switch to dark mode";
+    }
+
+    var savedTheme = localStorage.getItem("theme");
+    var prefersDark = savedTheme === "dark" ||
+        (savedTheme === null && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    applyTheme(prefersDark);
+
+    themeToggle.addEventListener("click", function () {
+        var isDark = document.documentElement.classList.toggle("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+        themeToggle.textContent = isDark ? "\u2600" : "\u263E";
+        themeToggle.title = isDark ? "Switch to light mode" : "Switch to dark mode";
+    });
+
     // === Map Setup ===
     var map = L.map("map").setView([52.37, 9.73], 9);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -247,7 +268,7 @@
     function displayRepeaters(repeaters) {
         markerLayer.clearLayers();
         repeaters.forEach(function (r) {
-            var color = r.band === "2m" ? "#2196F3" : "#FF9800";
+            var color = r.band === "2m" ? "#2196F3" : "#D32F2F";
             var marker = L.circleMarker([r.lat, r.lng], {
                 radius: 6,
                 fillColor: color,
