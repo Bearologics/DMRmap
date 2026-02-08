@@ -41,6 +41,10 @@
     // === DOM ===
     var band2m = document.getElementById("band-2m");
     var band70cm = document.getElementById("band-70cm");
+    var netBm = document.getElementById("net-bm");
+    var netDmrplus = document.getElementById("net-dmrplus");
+    var netTgif = document.getElementById("net-tgif");
+    var netOther = document.getElementById("net-other");
     var countEl = document.getElementById("count");
     var fromInput = document.getElementById("route-from");
     var toInput = document.getElementById("route-to");
@@ -200,6 +204,17 @@
         return "all";
     }
 
+    function getSelectedNetworks() {
+        var nets = [];
+        if (netBm.checked) nets.push("BM");
+        if (netDmrplus.checked) nets.push("DMR+");
+        if (netTgif.checked) nets.push("TGIF");
+        if (netOther.checked) nets.push("Other");
+        if (nets.length === 4) return "all";
+        if (nets.length === 0) return "none";
+        return nets.join(",");
+    }
+
     function escapeHtml(str) {
         if (!str) return "";
         return str
@@ -241,10 +256,10 @@
         if (r.state) loc += ", " + escapeHtml(r.state);
         if (r.country) loc += ", " + escapeHtml(r.country);
         html += "<tr><td>Location</td><td>" + loc + "</td></tr>";
-        if (r.ipsc_network)
+        if (r.network)
             html +=
                 "<tr><td>Network</td><td>" +
-                escapeHtml(r.ipsc_network) +
+                escapeHtml(r.network) +
                 "</td></tr>";
         if (r.trustee)
             html +=
@@ -285,6 +300,12 @@
     function fetchRepeaters() {
         if (isRouteMode) return;
 
+        if (getSelectedNetworks() === "none") {
+            markerLayer.clearLayers();
+            showCount(0);
+            return;
+        }
+
         if (controller) controller.abort();
         controller = new AbortController();
 
@@ -295,6 +316,7 @@
             minLng: bounds.getWest(),
             maxLng: bounds.getEast(),
             band: getSelectedBand(),
+            network: getSelectedNetworks(),
         });
 
         fetch("/api/repeaters?" + params, { signal: controller.signal })
@@ -360,6 +382,12 @@
     function fetchRouteRepeaters() {
         if (!routePoints) return;
 
+        if (getSelectedNetworks() === "none") {
+            markerLayer.clearLayers();
+            showCount(0);
+            return;
+        }
+
         showStatus("Loading...");
         return fetch("/api/repeaters/route", {
             method: "POST",
@@ -368,6 +396,7 @@
                 points: routePoints,
                 band: getSelectedBand(),
                 corridor: 10,
+                network: getSelectedNetworks() === "all" ? [] : getSelectedNetworks().split(","),
             }),
         })
             .then(function (resp) {
@@ -456,6 +485,13 @@
     band70cm.addEventListener("change", function () {
         if (isRouteMode) fetchRouteRepeaters();
         else fetchRepeaters();
+    });
+
+    [netBm, netDmrplus, netTgif, netOther].forEach(function (cb) {
+        cb.addEventListener("change", function () {
+            if (isRouteMode) fetchRouteRepeaters();
+            else fetchRepeaters();
+        });
     });
 
     routeBtn.addEventListener("click", findRoute);

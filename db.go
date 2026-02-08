@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"math"
+	"strings"
 
 	_ "modernc.org/sqlite"
 )
@@ -23,11 +24,13 @@ CREATE TABLE IF NOT EXISTS repeaters (
     ts_linked    TEXT NOT NULL DEFAULT '',
     trustee      TEXT NOT NULL DEFAULT '',
     ipsc_network TEXT NOT NULL DEFAULT '',
+    network      TEXT NOT NULL DEFAULT '',
     status       TEXT NOT NULL DEFAULT 'ACTIVE'
 );
 
 CREATE INDEX IF NOT EXISTS idx_repeaters_lat_band ON repeaters (lat, band);
 CREATE INDEX IF NOT EXISTS idx_repeaters_lng ON repeaters (lng);
+CREATE INDEX IF NOT EXISTS idx_repeaters_network ON repeaters (network);
 `
 
 type Repeater struct {
@@ -45,6 +48,7 @@ type Repeater struct {
 	TsLinked    string  `json:"ts_linked"`
 	Trustee     string  `json:"trustee"`
 	IpscNetwork string  `json:"ipsc_network"`
+	Network     string  `json:"network"`
 	Status      string  `json:"status"`
 }
 
@@ -60,22 +64,49 @@ func openDB(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band string) ([]Repeater, error) {
-	baseQuery := `SELECT id, callsign, frequency, band, lat, lng, city, state, country,
-		color_code, offset, ts_linked, trustee, ipsc_network, status
+func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band string, networks []string) ([]Repeater, error) {
+	query := `SELECT id, callsign, frequency, band, lat, lng, city, state, country,
+		color_code, offset, ts_linked, trustee, ipsc_network, network, status
 		FROM repeaters WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?`
 
-	var rows *sql.Rows
-	var err error
+	args := []interface{}{minLat, maxLat, minLng, maxLng}
 
 	switch band {
 	case "2m":
-		rows, err = db.Query(baseQuery+" AND band = ?", minLat, maxLat, minLng, maxLng, "2m")
+		query += " AND band = ?"
+		args = append(args, "2m")
 	case "70cm":
-		rows, err = db.Query(baseQuery+" AND band = ?", minLat, maxLat, minLng, maxLng, "70cm")
+		query += " AND band = ?"
+		args = append(args, "70cm")
 	default:
-		rows, err = db.Query(baseQuery+" AND band IN ('2m', '70cm')", minLat, maxLat, minLng, maxLng)
+		query += " AND band IN ('2m', '70cm')"
 	}
+
+	// Network filter: only apply when not all 4 categories are selected
+	if len(networks) > 0 && len(networks) < 4 {
+		var placeholders []string
+		for _, n := range networks {
+			switch n {
+			case "BM":
+				placeholders = append(placeholders, "?")
+				args = append(args, "Brandmeister")
+			case "DMR+":
+				placeholders = append(placeholders, "?")
+				args = append(args, "DMR+")
+			case "TGIF":
+				placeholders = append(placeholders, "?")
+				args = append(args, "TGIF")
+			case "Other":
+				placeholders = append(placeholders, "?", "?", "?", "?")
+				args = append(args, "DMR-MARC", "FreeDMR", "Other", "")
+			}
+		}
+		if len(placeholders) > 0 {
+			query += " AND network IN (" + strings.Join(placeholders, ",") + ")"
+		}
+	}
+
+	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +118,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 		if err := rows.Scan(&r.ID, &r.Callsign, &r.Frequency, &r.Band,
 			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
 			&r.ColorCode, &r.Offset, &r.TsLinked, &r.Trustee,
-			&r.IpscNetwork, &r.Status); err != nil {
+			&r.IpscNetwork, &r.Network, &r.Status); err != nil {
 			return nil, err
 		}
 		results = append(results, r)
@@ -100,7 +131,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 }
 
 // Route corridor query: find repeaters within corridorKm of a polyline.
-func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string) ([]Repeater, error) {
+func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string) ([]Repeater, error) {
 	if len(points) == 0 {
 		return []Repeater{}, nil
 	}
@@ -131,7 +162,7 @@ func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float6
 	maxLng += lngPad
 
 	// Fetch candidates from bounding box
-	candidates, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band)
+	candidates, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks)
 	if err != nil {
 		return nil, err
 	}

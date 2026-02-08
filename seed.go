@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type rawRepeater struct {
@@ -41,6 +42,12 @@ func seedDatabase(dbPath, jsonPath string) error {
 		return fmt.Errorf("create schema: %w", err)
 	}
 
+	// Migration: add network column for existing databases
+	if _, err := db.Exec("ALTER TABLE repeaters ADD COLUMN network TEXT NOT NULL DEFAULT ''"); err == nil {
+		db.Exec("DELETE FROM repeaters")
+		log.Println("Added network column, re-seeding database")
+	}
+
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM repeaters").Scan(&count); err != nil {
 		return fmt.Errorf("count check: %w", err)
@@ -68,8 +75,8 @@ func seedDatabase(dbPath, jsonPath string) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO repeaters
 		(id, callsign, frequency, band, lat, lng, city, state, country,
-		 color_code, offset, ts_linked, trustee, ipsc_network, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		 color_code, offset, ts_linked, trustee, ipsc_network, network, status)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("prepare stmt: %w", err)
@@ -90,9 +97,10 @@ func seedDatabase(dbPath, jsonPath string) error {
 		}
 		band := classifyBand(freq)
 
+		network := classifyNetwork(r.IpscNetwork)
 		if _, err := stmt.Exec(r.ID, r.Callsign, freq, band, lat, lng,
 			r.City, r.State, r.Country, r.ColorCode, r.Offset,
-			r.TsLinked, r.Trustee, r.IpscNetwork, r.Status); err != nil {
+			r.TsLinked, r.Trustee, r.IpscNetwork, network, r.Status); err != nil {
 			log.Printf("Warning: skipping repeater %d (%s): %v", r.ID, r.Callsign, err)
 			skipped++
 			continue
@@ -162,4 +170,34 @@ func classifyBand(freq float64) string {
 		return "70cm"
 	}
 	return "other"
+}
+
+func classifyNetwork(raw string) string {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	if s == "" || s == "none" || s == "n/a" || s == "?" || s == "-" || s == "no" {
+		return ""
+	}
+	if strings.Contains(s, "brandm") || s == "bm" || strings.HasPrefix(s, "bm ") ||
+		strings.HasPrefix(s, "bm,") || strings.HasPrefix(s, "bm/") ||
+		strings.Contains(s, "brand m") || strings.Contains(s, "braindm") ||
+		strings.Contains(s, "branme") || strings.Contains(s, "bramm") ||
+		strings.Contains(s, "brewmister") || s == "bmr" {
+		return "Brandmeister"
+	}
+	if strings.Contains(s, "dmr-plus") || strings.Contains(s, "dmr+") ||
+		strings.Contains(s, "dmrplus") || s == "dmr plus" ||
+		strings.HasPrefix(s, "ipsc2") || s == "ipsc" {
+		return "DMR+"
+	}
+	if strings.Contains(s, "dmr-marc") || strings.Contains(s, "dmr marc") ||
+		s == "marc" || strings.Contains(s, "dmrmarc") {
+		return "DMR-MARC"
+	}
+	if strings.Contains(s, "tgif") {
+		return "TGIF"
+	}
+	if strings.Contains(s, "freedmr") || strings.Contains(s, "free-dmr") || strings.Contains(s, "free dmr") {
+		return "FreeDMR"
+	}
+	return "Other"
 }

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type apiResponse struct {
@@ -16,6 +17,7 @@ type routeRequest struct {
 	Points   [][2]float64 `json:"points"`
 	Band     string       `json:"band"`
 	Corridor float64      `json:"corridor"`
+	Network  []string     `json:"network"`
 }
 
 func handleRepeaters(db *sql.DB) http.HandlerFunc {
@@ -45,7 +47,12 @@ func handleRepeaters(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		repeaters, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band)
+		var networks []string
+		if net := q.Get("network"); net != "" && net != "all" {
+			networks = strings.Split(net, ",")
+		}
+
+		repeaters, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks)
 		if err != nil {
 			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
 			return
@@ -92,7 +99,7 @@ func handleRouteRepeaters(db *sql.DB) http.HandlerFunc {
 			req.Corridor = 10
 		}
 
-		repeaters, err := queryRepeatersAlongRoute(db, req.Points, req.Corridor, req.Band)
+		repeaters, err := queryRepeatersAlongRoute(db, req.Points, req.Corridor, req.Band, req.Network)
 		if err != nil {
 			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
 			return
