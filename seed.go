@@ -94,7 +94,7 @@ func seedDatabase(dbPath, jsonPath string) error {
 
 		network := classifyNetwork(r.IpscNetwork)
 		hotspot := 0
-		if isHotspot(r.Offset, r.City, r.MapInfo) {
+		if isHotspot(r.Offset, r.City, r.MapInfo, r.Callsign, r.Country, r.Trustee) {
 			hotspot = 1
 			hotspots++
 		}
@@ -172,7 +172,7 @@ func classifyBand(freq float64) string {
 	return "other"
 }
 
-func isHotspot(offset, city, mapInfo string) bool {
+func isHotspot(offset, city, mapInfo, callsign, country, trustee string) bool {
 	// Zero offset indicates simplex (likely a personal hotspot)
 	if off, err := strconv.ParseFloat(strings.TrimSpace(offset), 64); err == nil && math.Abs(off) < 0.01 {
 		return true
@@ -186,6 +186,86 @@ func isHotspot(offset, city, mapInfo string) bool {
 		strings.Contains(check, "simplex") {
 		return true
 	}
+	// Country-specific personal callsign detection
+	if isPersonalCallsign(callsign, country) {
+		return true
+	}
+	// Trustee matches callsign — station registered under personal call
+	if trustee != "" && strings.EqualFold(strings.TrimSpace(trustee), strings.TrimSpace(callsign)) {
+		return true
+	}
+	return false
+}
+
+// isPersonalCallsign returns true if the callsign matches a personal (non-repeater)
+// allocation pattern for countries with clear conventions.
+func isPersonalCallsign(callsign, country string) bool {
+	cs := strings.ToUpper(strings.TrimSpace(callsign))
+	if len(cs) < 3 {
+		return false
+	}
+
+	switch country {
+	case "Germany":
+		// D[A-R][0] = club/repeater, D[A-R][1-9] = personal
+		if cs[0] == 'D' && cs[1] >= 'A' && cs[1] <= 'R' && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "United Kingdom":
+		// GB3/GB7 = repeater allocation — everything else is personal
+		if strings.HasPrefix(cs, "GB3") || strings.HasPrefix(cs, "GB7") {
+			return false
+		}
+		if cs[0] == 'G' || cs[0] == 'M' || strings.HasPrefix(cs, "2E") {
+			return true
+		}
+	case "Italy":
+		// IR prefix = repeater, other I-prefix = personal
+		if cs[0] == 'I' && !strings.HasPrefix(cs, "IR") {
+			return true
+		}
+	case "France":
+		// F[digit]Z = repeater allocation, F[digit][non-Z] = personal
+		if cs[0] == 'F' && len(cs) >= 3 && cs[1] >= '0' && cs[1] <= '9' && cs[2] != 'Z' {
+			return true
+		}
+	case "Poland":
+		// SR = repeater, SP/SQ/SO = personal
+		if strings.HasPrefix(cs, "SP") || strings.HasPrefix(cs, "SQ") || strings.HasPrefix(cs, "SO") {
+			return true
+		}
+	case "Austria":
+		// OE[digit]X = repeater/relay, OE[digit][non-X] = personal
+		if strings.HasPrefix(cs, "OE") && len(cs) >= 4 && cs[2] >= '0' && cs[2] <= '9' && cs[3] != 'X' {
+			return true
+		}
+	case "Belgium":
+		// ON0 = repeater, ON[1-9] = personal
+		if strings.HasPrefix(cs, "ON") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Czech Republic":
+		// OK0 = repeater, OK[1-9] = personal
+		if strings.HasPrefix(cs, "OK") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Bulgaria":
+		// LZ0 = repeater, LZ[1-9] = personal
+		if strings.HasPrefix(cs, "LZ") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Portugal":
+		// CQ0/CT0 = repeater, CQ/CT[1-9] = personal
+		if (strings.HasPrefix(cs, "CQ") || strings.HasPrefix(cs, "CT")) && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Netherlands":
+		// PI = repeater, PA/PD/PE/PH = personal
+		if cs[0] == 'P' && !strings.HasPrefix(cs, "PI") {
+			return true
+		}
+	}
+
 	return false
 }
 
