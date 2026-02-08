@@ -23,7 +23,7 @@
     });
 
     // === Map Setup ===
-    var map = L.map("map").setView([52.37, 9.73], 9);
+    var map = L.map("map").setView([52.37, 9.73], 6);
     L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution:
@@ -93,7 +93,7 @@
                             format: "json",
                             limit: "5",
                             addressdetails: "0",
-                            "accept-language": navigator.language,
+                            "accept-language": "de",
                         }),
                     { signal: acController.signal }
                 )
@@ -322,7 +322,7 @@
                     q: address,
                     format: "json",
                     limit: "1",
-                    "accept-language": navigator.language,
+                    "accept-language": "de",
                 })
         )
             .then(function (resp) {
