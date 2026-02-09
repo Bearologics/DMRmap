@@ -201,6 +201,27 @@ html, body {
     cursor: pointer;
 }
 
+.experimental {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--text-fainter);
+}
+
+.experimental summary {
+    cursor: pointer;
+    user-select: none;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+}
+
+.experimental summary:hover {
+    color: var(--text-faint);
+}
+
+.experimental[open] {
+    padding-bottom: 2px;
+}
+
 .count {
     margin-left: auto;
     font-size: 12px;
@@ -486,6 +507,16 @@ html, body {
 
 .rptr-popup .band-70cm {
     background: #D32F2F;
+}
+
+@keyframes heatmap-pulse {
+    0%   { opacity: 0.8; }
+    50%  { opacity: 0.3; }
+    100% { opacity: 0.8; }
+}
+
+.heatmap-glow {
+    animation: heatmap-pulse 2s ease-in-out infinite;
 }
 
 @media (max-width: 768px) {

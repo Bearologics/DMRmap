@@ -10,6 +10,7 @@
     }).addTo(map);
 
     // === State ===
+    var heatmapGlowLayer = L.layerGroup().addTo(map);
     var markerLayer = L.layerGroup().addTo(map);
     var routeLayer = null;
     var routePoints = null; // stored [lat, lng] pairs for re-fetching on band change
@@ -20,6 +21,12 @@
     var pinLatLng = null;
     var debounceTimer = null;
     var controller = null;
+    var heatmapSocket = null;
+    var heatmapCounts = {};
+    var heatmapMarkerMap = {};
+    var heatmapGlowMarkers = {};
+    var heatmapMaxCount = 1;
+    var heatmapDecayTimer = null;
 
     // === DOM ===
     var band2m = document.getElementById("band-2m");
@@ -30,6 +37,7 @@
     var netOther = document.getElementById("net-other");
     var showHotspots = document.getElementById("show-hotspots");
     var showInactive = document.getElementById("show-inactive");
+    var showHeatmap = document.getElementById("show-heatmap");
     var countEl = document.getElementById("count");
     var fromInput = document.getElementById("route-from");
     var toInput = document.getElementById("route-to");
@@ -278,6 +286,9 @@
     // === Display markers ===
     function displayRepeaters(repeaters) {
         markerLayer.clearLayers();
+        heatmapMarkerMap = {};
+        heatmapGlowLayer.clearLayers();
+        heatmapGlowMarkers = {};
         repeaters.forEach(function (r) {
             var color = r.band === "2m" ? "#2196F3" : "#D32F2F";
             var marker = L.circleMarker([r.lat, r.lng], {
@@ -289,6 +300,10 @@
             });
             marker.bindPopup(buildPopup(r), { maxWidth: 280 });
             markerLayer.addLayer(marker);
+            heatmapMarkerMap[r.id] = marker;
+            if (showHeatmap.checked && heatmapCounts[r.id]) {
+                applyHeatmapGlow(r.id, r.lat, r.lng);
+            }
         });
     }
 
@@ -567,6 +582,122 @@
         fetchRepeaters();
     }
 
+    // === Heatmap ===
+    function heatColor(intensity) {
+        var r, g;
+        if (intensity < 0.5) {
+            r = Math.round(255 * (intensity * 2));
+            g = 255;
+        } else {
+            r = 255;
+            g = Math.round(255 * (1 - (intensity - 0.5) * 2));
+        }
+        return "rgb(" + r + "," + g + ",0)";
+    }
+
+    function applyHeatmapGlow(repeaterId, lat, lng) {
+        var count = heatmapCounts[repeaterId] || 0;
+        if (count === 0) return;
+        var intensity = Math.min(count / Math.max(heatmapMaxCount, 1), 1.0);
+        var glowRadius = 8 + intensity * 16;
+        var color = heatColor(intensity);
+        if (heatmapGlowMarkers[repeaterId]) {
+            heatmapGlowLayer.removeLayer(heatmapGlowMarkers[repeaterId]);
+        }
+        var glow = L.circleMarker([lat, lng], {
+            radius: glowRadius,
+            fillColor: color,
+            color: color,
+            weight: 2,
+            fillOpacity: 0.25 + intensity * 0.2,
+            opacity: 0.6 + intensity * 0.4,
+            className: "heatmap-glow",
+            interactive: false,
+        });
+        heatmapGlowLayer.addLayer(glow);
+        heatmapGlowMarkers[repeaterId] = glow;
+    }
+
+    function clearHeatmapVisuals() {
+        heatmapGlowLayer.clearLayers();
+        heatmapGlowMarkers = {};
+    }
+
+    function refreshAllGlows() {
+        clearHeatmapVisuals();
+        for (var id in heatmapCounts) {
+            if (heatmapMarkerMap[id]) {
+                var latlng = heatmapMarkerMap[id].getLatLng();
+                applyHeatmapGlow(parseInt(id), latlng.lat, latlng.lng);
+            }
+        }
+    }
+
+    function connectHeatmap() {
+        if (heatmapSocket) return;
+        heatmapSocket = io("https://api.brandmeister.network", {
+            path: "/lh/socket.io",
+            transports: ["websocket"],
+        });
+        heatmapSocket.on("connect", function () {
+            console.log("Heatmap: connected to BrandMeister LH");
+        });
+        heatmapSocket.on("disconnect", function () {
+            console.log("Heatmap: disconnected from BrandMeister LH");
+        });
+        heatmapSocket.on("mqtt", function (data) {
+            try {
+                var payload = typeof data.payload === "string"
+                    ? JSON.parse(data.payload)
+                    : data.payload;
+                if (payload.Event !== "Session-Stop") return;
+                var contextId = payload.ContextID;
+                if (!contextId || !heatmapMarkerMap[contextId]) return;
+                heatmapCounts[contextId] = (heatmapCounts[contextId] || 0) + 1;
+                if (heatmapCounts[contextId] > heatmapMaxCount) {
+                    heatmapMaxCount = heatmapCounts[contextId];
+                    refreshAllGlows();
+                } else {
+                    var latlng = heatmapMarkerMap[contextId].getLatLng();
+                    applyHeatmapGlow(contextId, latlng.lat, latlng.lng);
+                }
+            } catch (e) { /* ignore malformed payloads */ }
+        });
+        heatmapDecayTimer = setInterval(function () {
+            var changed = false;
+            for (var id in heatmapCounts) {
+                heatmapCounts[id] = Math.floor(heatmapCounts[id] * 0.8);
+                if (heatmapCounts[id] === 0) {
+                    delete heatmapCounts[id];
+                }
+                changed = true;
+            }
+            if (changed) {
+                heatmapMaxCount = 1;
+                for (var id2 in heatmapCounts) {
+                    if (heatmapCounts[id2] > heatmapMaxCount) {
+                        heatmapMaxCount = heatmapCounts[id2];
+                    }
+                }
+                refreshAllGlows();
+            }
+        }, 60000);
+    }
+
+    function disconnectHeatmap() {
+        if (heatmapSocket) {
+            heatmapSocket.disconnect();
+            heatmapSocket = null;
+        }
+        if (heatmapDecayTimer) {
+            clearInterval(heatmapDecayTimer);
+            heatmapDecayTimer = null;
+        }
+        heatmapCounts = {};
+        heatmapMaxCount = 1;
+        clearHeatmapVisuals();
+    }
+
     // === Events ===
     map.on("moveend", function () {
         clearTimeout(debounceTimer);
@@ -592,6 +723,11 @@
 
     showHotspots.addEventListener("change", refetchActive);
     showInactive.addEventListener("change", refetchActive);
+
+    showHeatmap.addEventListener("change", function () {
+        if (showHeatmap.checked) connectHeatmap();
+        else disconnectHeatmap();
+    });
 
     pinClearBtn.addEventListener("click", clearPin);
 

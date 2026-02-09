@@ -26,6 +26,10 @@
             <label class="hotspot-label"><input type="checkbox" id="show-hotspots"> Don't hide personal hotspots</label>
             <label class="hotspot-label"><input type="checkbox" id="show-inactive"> Show inactive repeaters</label>
         </details>
+        <details class="experimental">
+            <summary>Experimental</summary>
+            <label class="hotspot-label"><input type="checkbox" id="show-heatmap"> Visualize Last Heard Heatmap</label>
+        </details>
         <div class="controls-row route-row autocomplete-wrap">
             <input type="text" id="route-from" placeholder="From address" autocomplete="off" />
             <ul class="autocomplete-list" id="ac-from"></ul>
@@ -58,6 +62,7 @@
         </div>
     </div>
     <script src="lib/leaflet.js"></script>
+    <script src="lib/socket.io.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
