@@ -3,11 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type rawRepeater struct {
@@ -38,26 +41,84 @@ type bmRepeater struct {
 	Owner string `json:"Owner"`
 }
 
-func loadBMRepeaters(path string) map[string]bool {
-	f, err := os.Open(path)
-	if err != nil {
-		log.Printf("Warning: could not open BM repeaters file %s: %v", path, err)
-		return map[string]bool{}
-	}
-	defer f.Close()
+const (
+	rptrsURL   = "https://radioid.net/static/rptrs.json"
+	bmrptrsURL = "https://api.brandmeister.network/v2/database/repeaters"
+)
 
+func downloadJSON(url string) (io.ReadCloser, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+	return resp.Body, nil
+}
+
+func loadBMRepeaters(path string) map[string]bool {
 	var rptrs []bmRepeater
-	if err := json.NewDecoder(f).Decode(&rptrs); err != nil {
-		log.Printf("Warning: could not decode BM repeaters file %s: %v", path, err)
-		return map[string]bool{}
+
+	if r, err := downloadJSON(bmrptrsURL); err == nil {
+		defer r.Close()
+		if err := json.NewDecoder(r).Decode(&rptrs); err != nil {
+			log.Printf("Warning: failed to decode BM repeaters from API: %v", err)
+			rptrs = nil
+		} else {
+			log.Printf("Downloaded %d BM repeaters from API", len(rptrs))
+		}
+	} else {
+		log.Printf("Could not download BM repeaters (%v), falling back to %s", err, path)
+	}
+
+	if rptrs == nil {
+		f, err := os.Open(path)
+		if err != nil {
+			log.Printf("Warning: could not open BM repeaters file %s: %v", path, err)
+			return map[string]bool{}
+		}
+		defer f.Close()
+		if err := json.NewDecoder(f).Decode(&rptrs); err != nil {
+			log.Printf("Warning: could not decode BM repeaters file %s: %v", path, err)
+			return map[string]bool{}
+		}
 	}
 
 	set := make(map[string]bool, len(rptrs))
 	for _, r := range rptrs {
 		set[strings.ToUpper(strings.TrimSpace(r.Call))] = true
 	}
-	log.Printf("Loaded %d BM repeater callsigns from %s", len(set), path)
+	log.Printf("Loaded %d BM repeater callsigns", len(set))
 	return set
+}
+
+func loadRepeaters(path string) ([]rawRepeater, error) {
+	var raw rawData
+
+	if r, err := downloadJSON(rptrsURL); err == nil {
+		defer r.Close()
+		if err := json.NewDecoder(r).Decode(&raw); err != nil {
+			log.Printf("Warning: failed to decode repeaters from API: %v", err)
+		} else {
+			log.Printf("Downloaded %d repeaters from API", len(raw.Rptrs))
+			return raw.Rptrs, nil
+		}
+	} else {
+		log.Printf("Could not download repeaters (%v), falling back to %s", err, path)
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open json: %w", err)
+	}
+	defer f.Close()
+	if err := json.NewDecoder(f).Decode(&raw); err != nil {
+		return nil, fmt.Errorf("decode json: %w", err)
+	}
+	return raw.Rptrs, nil
 }
 
 func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
@@ -80,15 +141,9 @@ func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
 		return nil
 	}
 
-	f, err := os.Open(jsonPath)
+	rptrs, err := loadRepeaters(jsonPath)
 	if err != nil {
-		return fmt.Errorf("open json: %w", err)
-	}
-	defer f.Close()
-
-	var raw rawData
-	if err := json.NewDecoder(f).Decode(&raw); err != nil {
-		return fmt.Errorf("decode json: %w", err)
+		return err
 	}
 
 	bmSet := loadBMRepeaters(bmrptrsPath)
@@ -109,7 +164,7 @@ func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
 	defer stmt.Close()
 
 	inserted, skipped, hotspots := 0, 0, 0
-	for _, r := range raw.Rptrs {
+	for _, r := range rptrs {
 		lat, lng, ok := parseCoords(r.Lat, r.Lng)
 		if !ok {
 			skipped++
@@ -295,6 +350,46 @@ func isPersonalCallsign(callsign, country string) bool {
 	case "Netherlands":
 		// PI = repeater, PA/PD/PE/PH = personal
 		if cs[0] == 'P' && !strings.HasPrefix(cs, "PI") {
+			return true
+		}
+	case "Spain":
+		// ED = repeater, EA[1-9] = personal
+		if strings.HasPrefix(cs, "EA") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Sweden":
+		// SK = repeater/club, SA/SM = personal
+		if strings.HasPrefix(cs, "SA") || strings.HasPrefix(cs, "SM") {
+			return true
+		}
+	case "Norway":
+		// LD = repeater/digipeater, LA/LB = personal
+		if strings.HasPrefix(cs, "LA") || strings.HasPrefix(cs, "LB") {
+			return true
+		}
+	case "Denmark":
+		// OZ0 = repeater, OZ[1-9] = personal
+		if strings.HasPrefix(cs, "OZ") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Finland":
+		// OH0 = repeater/Aland, OH[1-9] = personal
+		if strings.HasPrefix(cs, "OH") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Hungary":
+		// HG0 = repeater, HG[1-9] = personal
+		if strings.HasPrefix(cs, "HG") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Romania":
+		// YO0 = repeater, YO[1-9] = personal
+		if strings.HasPrefix(cs, "YO") && cs[2] >= '1' && cs[2] <= '9' {
+			return true
+		}
+	case "Slovenia":
+		// S50 = repeater, S5[1-9] = personal
+		if strings.HasPrefix(cs, "S5") && cs[2] >= '1' && cs[2] <= '9' {
 			return true
 		}
 	}
