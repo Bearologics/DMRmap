@@ -7,24 +7,26 @@ import (
 )
 
 func main() {
-	dbPath := envOr("DB_PATH", "data/repeaters.db")
+	dsn := envOr("DATABASE_URL", "postgres://dmrmap:dmrmap@localhost:5432/dmrmap?sslmode=disable")
 	jsonPath := envOr("JSON_PATH", "rptrs.json")
 	bmrptrsPath := envOr("BMRPTRS_PATH", "bmrptrs.json")
 	addr := envOr("LISTEN_ADDR", ":8080")
 
-	if err := os.MkdirAll("data", 0755); err != nil {
-		log.Fatalf("Failed to create data directory: %v", err)
-	}
-
-	if err := seedDatabase(dbPath, jsonPath, bmrptrsPath); err != nil {
-		log.Fatalf("Failed to seed database: %v", err)
-	}
-
-	db, err := openDB(dbPath)
+	db, err := openDB(dsn)
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
+
+	if err := runMigrations(db); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
+
+	if err := seedDatabase(db, jsonPath, bmrptrsPath); err != nil {
+		log.Fatalf("Failed to seed database: %v", err)
+	}
+
+	startBMDeviceSync(db)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/repeaters", handleRepeaters(db))

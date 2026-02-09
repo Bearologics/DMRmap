@@ -19,6 +19,7 @@ type routeRequest struct {
 	Corridor float64      `json:"corridor"`
 	Network  []string     `json:"network"`
 	Hotspots bool         `json:"hotspots"`
+	Inactive bool         `json:"inactive"`
 }
 
 func handleRepeaters(db *sql.DB) http.HandlerFunc {
@@ -54,8 +55,9 @@ func handleRepeaters(db *sql.DB) http.HandlerFunc {
 		}
 
 		showHotspots := q.Get("hotspots") == "1"
+		showInactive := q.Get("inactive") == "1"
 
-		repeaters, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks, showHotspots)
+		repeaters, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks, showHotspots, showInactive)
 		if err != nil {
 			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
 			return
@@ -118,8 +120,9 @@ func handleRadiusRepeaters(db *sql.DB) http.HandlerFunc {
 		}
 
 		showHotspots := q.Get("hotspots") == "1"
+		showInactive := q.Get("inactive") == "1"
 
-		repeaters, err := queryRepeatersInRadius(db, lat, lng, radius, band, networks, showHotspots)
+		repeaters, err := queryRepeatersInRadius(db, lat, lng, radius, band, networks, showHotspots, showInactive)
 		if err != nil {
 			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
 			return
@@ -166,7 +169,7 @@ func handleRouteRepeaters(db *sql.DB) http.HandlerFunc {
 			req.Corridor = 10
 		}
 
-		repeaters, err := queryRepeatersAlongRoute(db, req.Points, req.Corridor, req.Band, req.Network, req.Hotspots)
+		repeaters, err := queryRepeatersAlongRoute(db, req.Points, req.Corridor, req.Band, req.Network, req.Hotspots, req.Inactive)
 		if err != nil {
 			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
 			return

@@ -4,7 +4,7 @@ root = "."
   cmd = "go build -o ./tmp/dmrmap ."
   bin = "./tmp/dmrmap"
   include_ext = ["go"]
-  exclude_dir = ["tmp", "static", "data"]
+  exclude_dir = ["tmp", "static", "data", "migrations"]
   delay = 500
 
 [misc]

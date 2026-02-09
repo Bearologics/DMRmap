@@ -2,84 +2,98 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"math"
 	"sort"
 	"strings"
+	"time"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const schemaSQL = `
-CREATE TABLE IF NOT EXISTS repeaters (
-    id           INTEGER PRIMARY KEY,
-    callsign     TEXT NOT NULL,
-    frequency    REAL NOT NULL,
-    band         TEXT NOT NULL,
-    lat          REAL NOT NULL,
-    lng          REAL NOT NULL,
-    city         TEXT NOT NULL DEFAULT '',
-    state        TEXT NOT NULL DEFAULT '',
-    country      TEXT NOT NULL DEFAULT '',
-    color_code   INTEGER NOT NULL DEFAULT 1,
-    offset       TEXT NOT NULL DEFAULT '',
-    ts_linked    TEXT NOT NULL DEFAULT '',
-    trustee      TEXT NOT NULL DEFAULT '',
-    ipsc_network TEXT NOT NULL DEFAULT '',
-    network      TEXT NOT NULL DEFAULT '',
-    hotspot      INTEGER NOT NULL DEFAULT 0,
-    status       TEXT NOT NULL DEFAULT 'ACTIVE'
-);
-
-CREATE INDEX IF NOT EXISTS idx_repeaters_lat_band ON repeaters (lat, band);
-CREATE INDEX IF NOT EXISTS idx_repeaters_lng ON repeaters (lng);
-CREATE INDEX IF NOT EXISTS idx_repeaters_network ON repeaters (network);
-`
-
 type Repeater struct {
-	ID          int     `json:"id"`
-	Callsign    string  `json:"callsign"`
-	Frequency   float64 `json:"frequency"`
-	Band        string  `json:"band"`
-	Lat         float64 `json:"lat"`
-	Lng         float64 `json:"lng"`
-	City        string  `json:"city"`
-	State       string  `json:"state"`
-	Country     string  `json:"country"`
-	ColorCode   int     `json:"color_code"`
-	Offset      string  `json:"offset"`
-	TsLinked    string  `json:"ts_linked"`
-	Trustee     string  `json:"trustee"`
-	IpscNetwork string  `json:"ipsc_network"`
-	Network     string  `json:"network"`
-	Hotspot     int     `json:"hotspot"`
-	Status      string  `json:"status"`
+	ID                    int        `json:"id"`
+	Callsign              string     `json:"callsign"`
+	FreqTx                float64    `json:"freq_tx"`
+	FreqRx                float64    `json:"freq_rx"`
+	FreqOffset            string     `json:"freq_offset"`
+	Band                  string     `json:"band"`
+	Lat                   float64    `json:"lat"`
+	Lng                   float64    `json:"lng"`
+	City                  string     `json:"city"`
+	State                 string     `json:"state"`
+	Country               string     `json:"country"`
+	ColorCode             int        `json:"color_code"`
+	TsLinked              string     `json:"ts_linked"`
+	Trustee               string     `json:"trustee"`
+	IpscNetwork           string     `json:"ipsc_network"`
+	Network               string     `json:"network"`
+	Hotspot               int        `json:"hotspot"`
+	Status                string     `json:"status"`
+	LastSeen              *time.Time `json:"last_seen"`
+	BmStatus              *int       `json:"bm_status"`
+	BmStatusText          string     `json:"bm_status_text"`
+	Hardware              string     `json:"hardware"`
+	Firmware              string     `json:"firmware"`
+	Pep                   int        `json:"pep"`
+	Agl                   int        `json:"agl"`
+	Website               string     `json:"website"`
+	Description           string     `json:"description"`
+	ImportFreqInconsistent bool      `json:"import_freq_inconsistent"`
+	Inactive              bool       `json:"inactive"`
 }
 
-func openDB(path string) (*sql.DB, error) {
-	db, err := sql.Open("sqlite", path)
+func openDB(dsn string) (*sql.DB, error) {
+	var db *sql.DB
+	var err error
+
+	for i := 0; i < 30; i++ {
+		db, err = sql.Open("pgx", dsn)
+		if err != nil {
+			log.Printf("Failed to open database (attempt %d/30): %v", i+1, err)
+			time.Sleep(time.Second)
+			continue
+		}
+		if err = db.Ping(); err != nil {
+			db.Close()
+			log.Printf("Failed to ping database (attempt %d/30): %v", i+1, err)
+			time.Sleep(time.Second)
+			continue
+		}
+		break
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to database after 30 attempts: %w", err)
 	}
-	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		db.Close()
-		return nil, err
-	}
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
 	return db, nil
 }
 
-func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band string, networks []string, showHotspots bool) ([]Repeater, error) {
-	query := `SELECT id, callsign, frequency, band, lat, lng, city, state, country,
-		color_code, offset, ts_linked, trustee, ipsc_network, network, hotspot, status
-		FROM repeaters WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?`
+func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band string, networks []string, showHotspots bool, showInactive bool) ([]Repeater, error) {
+	paramIdx := 0
+	nextParam := func() string {
+		paramIdx++
+		return fmt.Sprintf("$%d", paramIdx)
+	}
+
+	query := `SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
+		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
+		import_freq_inconsistent
+		FROM repeaters WHERE lat BETWEEN ` + nextParam() + ` AND ` + nextParam() + ` AND lng BETWEEN ` + nextParam() + ` AND ` + nextParam()
 
 	args := []interface{}{minLat, maxLat, minLng, maxLng}
 
 	switch band {
 	case "2m":
-		query += " AND band = ?"
+		query += " AND band = " + nextParam()
 		args = append(args, "2m")
 	case "70cm":
-		query += " AND band = ?"
+		query += " AND band = " + nextParam()
 		args = append(args, "70cm")
 	default:
 		query += " AND band IN ('2m', '70cm')"
@@ -95,16 +109,16 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 		for _, n := range networks {
 			switch n {
 			case "BM":
-				placeholders = append(placeholders, "?")
+				placeholders = append(placeholders, nextParam())
 				args = append(args, "Brandmeister")
 			case "DMR+":
-				placeholders = append(placeholders, "?")
+				placeholders = append(placeholders, nextParam())
 				args = append(args, "DMR+")
 			case "TGIF":
-				placeholders = append(placeholders, "?")
+				placeholders = append(placeholders, nextParam())
 				args = append(args, "TGIF")
 			case "Other":
-				placeholders = append(placeholders, "?", "?", "?", "?")
+				placeholders = append(placeholders, nextParam(), nextParam(), nextParam(), nextParam())
 				args = append(args, "DMR-MARC", "FreeDMR", "Other", "")
 			}
 		}
@@ -113,21 +127,32 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 		}
 	}
 
+	if !showInactive {
+		threshold := time.Now().Add(-7 * 24 * time.Hour)
+		query += " AND (last_seen IS NULL OR last_seen >= " + nextParam() + ")"
+		args = append(args, threshold)
+	}
+
 	rows, err := db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
+	threshold := time.Now().Add(-7 * 24 * time.Hour)
 	var results []Repeater
 	for rows.Next() {
 		var r Repeater
-		if err := rows.Scan(&r.ID, &r.Callsign, &r.Frequency, &r.Band,
+		if err := rows.Scan(&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
 			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
-			&r.ColorCode, &r.Offset, &r.TsLinked, &r.Trustee,
-			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status); err != nil {
+			&r.ColorCode, &r.TsLinked, &r.Trustee,
+			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+			&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
+			&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
+			&r.ImportFreqInconsistent); err != nil {
 			return nil, err
 		}
+		r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
 		results = append(results, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -138,7 +163,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 }
 
 // Route corridor query: find repeaters within corridorKm of a polyline.
-func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string, showHotspots bool) ([]Repeater, error) {
+func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string, showHotspots bool, showInactive bool) ([]Repeater, error) {
 	if len(points) == 0 {
 		return []Repeater{}, nil
 	}
@@ -169,7 +194,7 @@ func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float6
 	maxLng += lngPad
 
 	// Fetch candidates from bounding box
-	candidates, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks, showHotspots)
+	candidates, err := queryRepeaters(db, minLat, maxLat, minLng, maxLng, band, networks, showHotspots, showInactive)
 	if err != nil {
 		return nil, err
 	}
@@ -190,11 +215,11 @@ type RepeaterWithDistance struct {
 	Distance float64 `json:"distance"`
 }
 
-func queryRepeatersInRadius(db *sql.DB, lat, lng, radiusKm float64, band string, networks []string, showHotspots bool) ([]RepeaterWithDistance, error) {
+func queryRepeatersInRadius(db *sql.DB, lat, lng, radiusKm float64, band string, networks []string, showHotspots bool, showInactive bool) ([]RepeaterWithDistance, error) {
 	latPad := radiusKm / 111.32
 	lngPad := radiusKm / (111.32 * math.Cos(lat*math.Pi/180))
 
-	candidates, err := queryRepeaters(db, lat-latPad, lat+latPad, lng-lngPad, lng+lngPad, band, networks, showHotspots)
+	candidates, err := queryRepeaters(db, lat-latPad, lat+latPad, lng-lngPad, lng+lngPad, band, networks, showHotspots, showInactive)
 	if err != nil {
 		return nil, err
 	}

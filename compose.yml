@@ -1,10 +1,24 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dmrmap
+      POSTGRES_PASSWORD: dmrmap
+      POSTGRES_DB: dmrmap
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
   dmrmap:
     build: .
-    tmpfs:
-      - /app/data
+    depends_on:
+      - postgres
     environment:
-      - DB_PATH=/app/data/repeaters.db
+      - DATABASE_URL=postgres://dmrmap:dmrmap@postgres:5432/dmrmap?sslmode=disable
       - JSON_PATH=/app/rptrs.json
+      - BMRPTRS_PATH=/app/bmrptrs.json
       - LISTEN_ADDR=:8080
     restart: unless-stopped
+
+volumes:
+  pgdata:

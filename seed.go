@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -121,17 +122,7 @@ func loadRepeaters(path string) ([]rawRepeater, error) {
 	return raw.Rptrs, nil
 }
 
-func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
-	db, err := openDB(dbPath)
-	if err != nil {
-		return fmt.Errorf("open db: %w", err)
-	}
-	defer db.Close()
-
-	if _, err := db.Exec(schemaSQL); err != nil {
-		return fmt.Errorf("create schema: %w", err)
-	}
-
+func seedDatabase(db *sql.DB, jsonPath, bmrptrsPath string) error {
 	var count int
 	if err := db.QueryRow("SELECT COUNT(*) FROM repeaters").Scan(&count); err != nil {
 		return fmt.Errorf("count check: %w", err)
@@ -154,9 +145,10 @@ func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
 	}
 
 	stmt, err := tx.Prepare(`INSERT INTO repeaters
-		(id, callsign, frequency, band, lat, lng, city, state, country,
-		 color_code, offset, ts_linked, trustee, ipsc_network, network, hotspot, status)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		(id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
+		 color_code, ts_linked, trustee, ipsc_network, network, hotspot, status)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+		ON CONFLICT (id) DO NOTHING`)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("prepare stmt: %w", err)
@@ -177,6 +169,12 @@ func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
 		}
 		band := classifyBand(freq)
 
+		// Calculate freq_rx from freq_tx + offset
+		freqRx := 0.0
+		if off, err := strconv.ParseFloat(strings.TrimSpace(r.Offset), 64); err == nil {
+			freqRx = freq + off
+		}
+
 		network := classifyNetwork(r.IpscNetwork)
 		hotspot := 0
 		if isHotspot(r.Offset, r.City, r.MapInfo, r.Callsign, r.Country, r.Trustee) {
@@ -186,8 +184,8 @@ func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
 			hotspot = 1
 			hotspots++
 		}
-		if _, err := stmt.Exec(r.ID, r.Callsign, freq, band, lat, lng,
-			r.City, r.State, r.Country, r.ColorCode, r.Offset,
+		if _, err := stmt.Exec(r.ID, r.Callsign, freq, freqRx, r.Offset, band, lat, lng,
+			r.City, r.State, r.Country, r.ColorCode,
 			r.TsLinked, r.Trustee, r.IpscNetwork, network, hotspot, r.Status); err != nil {
 			log.Printf("Warning: skipping repeater %d (%s): %v", r.ID, r.Callsign, err)
 			skipped++

@@ -29,6 +29,7 @@
     var netTgif = document.getElementById("net-tgif");
     var netOther = document.getElementById("net-other");
     var showHotspots = document.getElementById("show-hotspots");
+    var showInactive = document.getElementById("show-inactive");
     var countEl = document.getElementById("count");
     var fromInput = document.getElementById("route-from");
     var toInput = document.getElementById("route-to");
@@ -224,20 +225,15 @@
     function buildPopup(r) {
         var bandClass = r.band === "2m" ? "band-2m" : "band-70cm";
         var html = '<div class="rptr-popup">';
-        html += '<h3><a href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + "</a></h3>";
+        html += '<h3><a href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + '</a> <span class="band-tag ' + bandClass + '">' + escapeHtml(r.band) + "</span></h3>";
         html += "<table>";
-        html +=
-            "<tr><td>Freq</td><td>" +
-            r.frequency.toFixed(5) +
-            ' MHz <span class="band-tag ' +
-            bandClass +
-            '">' +
-            escapeHtml(r.band) +
-            "</span></td></tr>";
-        if (r.offset)
+        html += "<tr><td>TX</td><td>" + r.freq_tx.toFixed(4) + " MHz</td></tr>";
+        if (r.freq_rx)
+            html += "<tr><td>RX</td><td>" + r.freq_rx.toFixed(4) + " MHz</td></tr>";
+        if (r.freq_offset)
             html +=
                 "<tr><td>Offset</td><td>" +
-                escapeHtml(r.offset) +
+                escapeHtml(r.freq_offset) +
                 " MHz</td></tr>";
         html += "<tr><td>CC</td><td>" + r.color_code + "</td></tr>";
         var loc = escapeHtml(r.city);
@@ -263,6 +259,18 @@
             "<tr><td>Status</td><td>" +
             escapeHtml(r.status) +
             "</td></tr>";
+        if (r.bm_status_text)
+            html += "<tr><td>BM Status</td><td>" + escapeHtml(r.bm_status_text) + "</td></tr>";
+        if (r.last_seen)
+            html += "<tr><td>Last seen</td><td>" + escapeHtml(r.last_seen.replace("T", " ").substring(0, 19)) + "</td></tr>";
+        if (r.hardware)
+            html += "<tr><td>Hardware</td><td>" + escapeHtml(r.hardware) + "</td></tr>";
+        if (r.pep)
+            html += "<tr><td>Power</td><td>" + r.pep + " W</td></tr>";
+        if (r.agl)
+            html += "<tr><td>Antenna</td><td>" + r.agl + " m AGL</td></tr>";
+        if (r.inactive)
+            html += '<tr><td></td><td style="color:#ef5350;font-weight:600">Inactive</td></tr>';
         html += "</table></div>";
         return html;
     }
@@ -277,7 +285,7 @@
                 fillColor: color,
                 color: "#fff",
                 weight: 1,
-                fillOpacity: 0.85,
+                fillOpacity: r.inactive ? 0.35 : 0.85,
             });
             marker.bindPopup(buildPopup(r), { maxWidth: 280 });
             markerLayer.addLayer(marker);
@@ -306,6 +314,7 @@
             band: getSelectedBand(),
             network: getSelectedNetworks(),
             hotspots: showHotspots.checked ? "1" : "0",
+            inactive: showInactive.checked ? "1" : "0",
         });
 
         fetch("/api/repeaters?" + params, { signal: controller.signal })
@@ -387,6 +396,7 @@
                 corridor: 10,
                 network: getSelectedNetworks() === "all" ? [] : getSelectedNetworks().split(","),
                 hotspots: showHotspots.checked,
+                inactive: showInactive.checked,
             }),
         })
             .then(function (resp) {
@@ -481,6 +491,7 @@
             band: getSelectedBand(),
             network: getSelectedNetworks(),
             hotspots: showHotspots.checked ? "1" : "0",
+            inactive: showInactive.checked ? "1" : "0",
         });
 
         fetch("/api/repeaters/radius?" + params)
@@ -507,7 +518,7 @@
             var bandColor = r.band === "2m" ? "#1976D2" : "#D32F2F";
             item.innerHTML =
                 '<a class="callsign" href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + "</a>" +
-                '<span class="freq" style="color:' + bandColor + '">' + r.frequency.toFixed(4) + "</span>" +
+                '<span class="freq" style="color:' + bandColor + '">' + r.freq_tx.toFixed(4) + "</span>" +
                 '<span class="dist">' + r.distance + " km</span>";
             item.addEventListener("click", function (e) {
                 if (e.target.closest("a")) return;
@@ -580,6 +591,7 @@
     });
 
     showHotspots.addEventListener("change", refetchActive);
+    showInactive.addEventListener("change", refetchActive);
 
     pinClearBtn.addEventListener("click", clearPin);
 

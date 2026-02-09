@@ -1,4 +1,15 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: dmrmap
+      POSTGRES_PASSWORD: dmrmap
+      POSTGRES_DB: dmrmap
+    volumes:
+      - pgdata-dev:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
   dmrmap:
     build:
       context: .
@@ -9,13 +20,15 @@ services:
       - .:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
-    tmpfs:
-      - /app/data
+    depends_on:
+      - postgres
     environment:
-      - DB_PATH=/app/data/repeaters.db
+      - DATABASE_URL=postgres://dmrmap:dmrmap@postgres:5432/dmrmap?sslmode=disable
       - JSON_PATH=/app/rptrs.json
+      - BMRPTRS_PATH=/app/bmrptrs.json
       - LISTEN_ADDR=:8080
 
 volumes:
   go-mod-cache:
   go-build-cache:
+  pgdata-dev:
