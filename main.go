@@ -9,13 +9,14 @@ import (
 func main() {
 	dbPath := envOr("DB_PATH", "data/repeaters.db")
 	jsonPath := envOr("JSON_PATH", "rptrs.json")
+	bmrptrsPath := envOr("BMRPTRS_PATH", "bmrptrs.json")
 	addr := envOr("LISTEN_ADDR", ":8080")
 
 	if err := os.MkdirAll("data", 0755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
 	}
 
-	if err := seedDatabase(dbPath, jsonPath); err != nil {
+	if err := seedDatabase(dbPath, jsonPath, bmrptrsPath); err != nil {
 		log.Fatalf("Failed to seed database: %v", err)
 	}
 

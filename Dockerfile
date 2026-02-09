@@ -10,5 +10,6 @@ WORKDIR /app
 COPY --from=builder /build/dmrmap .
 COPY static/ ./static/
 COPY rptrs.json .
+COPY bmrptrs.json .
 EXPOSE 8080
 CMD ["./dmrmap"]

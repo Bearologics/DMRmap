@@ -32,7 +32,35 @@ type rawData struct {
 	Rptrs []rawRepeater `json:"rptrs"`
 }
 
-func seedDatabase(dbPath, jsonPath string) error {
+type bmRepeater struct {
+	ID    int    `json:"ID"`
+	Call  string `json:"Call"`
+	Owner string `json:"Owner"`
+}
+
+func loadBMRepeaters(path string) map[string]bool {
+	f, err := os.Open(path)
+	if err != nil {
+		log.Printf("Warning: could not open BM repeaters file %s: %v", path, err)
+		return map[string]bool{}
+	}
+	defer f.Close()
+
+	var rptrs []bmRepeater
+	if err := json.NewDecoder(f).Decode(&rptrs); err != nil {
+		log.Printf("Warning: could not decode BM repeaters file %s: %v", path, err)
+		return map[string]bool{}
+	}
+
+	set := make(map[string]bool, len(rptrs))
+	for _, r := range rptrs {
+		set[strings.ToUpper(strings.TrimSpace(r.Call))] = true
+	}
+	log.Printf("Loaded %d BM repeater callsigns from %s", len(set), path)
+	return set
+}
+
+func seedDatabase(dbPath, jsonPath, bmrptrsPath string) error {
 	db, err := openDB(dbPath)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
@@ -62,6 +90,8 @@ func seedDatabase(dbPath, jsonPath string) error {
 	if err := json.NewDecoder(f).Decode(&raw); err != nil {
 		return fmt.Errorf("decode json: %w", err)
 	}
+
+	bmSet := loadBMRepeaters(bmrptrsPath)
 
 	tx, err := db.Begin()
 	if err != nil {
@@ -95,6 +125,9 @@ func seedDatabase(dbPath, jsonPath string) error {
 		network := classifyNetwork(r.IpscNetwork)
 		hotspot := 0
 		if isHotspot(r.Offset, r.City, r.MapInfo, r.Callsign, r.Country, r.Trustee) {
+			hotspot = 1
+			hotspots++
+		} else if network == "Brandmeister" && len(bmSet) > 0 && !bmSet[strings.ToUpper(strings.TrimSpace(r.Callsign))] {
 			hotspot = 1
 			hotspots++
 		}
