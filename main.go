@@ -26,7 +26,11 @@ func main() {
 		log.Fatalf("Failed to seed database: %v", err)
 	}
 
-	startBMDeviceSync(db)
+	if os.Getenv("BM_SYNC") == "true" {
+		startBMDeviceSync(db)
+	} else {
+		log.Println("BM device sync disabled (set BM_SYNC=true to enable)")
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/repeaters", handleRepeaters(db))

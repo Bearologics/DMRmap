@@ -18,6 +18,7 @@ services:
       - JSON_PATH=/app/rptrs.json
       - BMRPTRS_PATH=/app/bmrptrs.json
       - LISTEN_ADDR=:8080
+      - BM_SYNC=true
     restart: unless-stopped
 
 volumes:
