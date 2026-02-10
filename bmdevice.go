@@ -116,6 +116,14 @@ func runBMDeviceSync(db *sql.DB) {
 			}
 			defer resp.Body.Close()
 
+			if resp.StatusCode == http.StatusNotFound {
+				log.Printf("BM device sync: 404 for %d (%s) — removing Brandmeister tag", rf.ID, rf.Callsign)
+				db.Exec(`UPDATE repeaters SET networks = array_remove(networks, 'Brandmeister') WHERE id = $1`, rf.ID)
+				mu.Lock()
+				removedBM++
+				mu.Unlock()
+				return
+			}
 			if resp.StatusCode != http.StatusOK {
 				log.Printf("BM device sync: HTTP %d for %d (%s)", resp.StatusCode, rf.ID, rf.Callsign)
 				mu.Lock()
