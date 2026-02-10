@@ -421,18 +421,18 @@ html, body {
     color: var(--text-muted);
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    flex: 1;
 }
 
-.pin-radius-label input {
-    width: 52px;
-    padding: 3px 4px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    font-size: 12px;
+.pin-radius-label input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+}
+
+.pin-radius-label span {
+    min-width: 24px;
     text-align: right;
-    background: var(--input-bg);
-    color: var(--text);
 }
 
 .pin-clear-btn {

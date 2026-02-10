@@ -49,6 +49,7 @@
     var corridorVal = document.getElementById("corridor-val");
     var pinControlsEl = document.getElementById("pin-controls");
     var pinRadiusInput = document.getElementById("pin-radius");
+    var pinRadiusVal = document.getElementById("pin-radius-val");
     var pinClearBtn = document.getElementById("pin-clear");
     var pinListEl = document.getElementById("pin-list");
 
@@ -816,9 +817,12 @@
 
     pinClearBtn.addEventListener("click", clearPin);
 
+    pinRadiusInput.addEventListener("input", function () {
+        pinRadiusVal.textContent = pinRadiusInput.value;
+        if (pinCircle) pinCircle.setRadius(pinRadiusInput.value * 1000);
+    });
     pinRadiusInput.addEventListener("change", function () {
         if (!pinLatLng) return;
-        if (pinCircle) pinCircle.setRadius(pinRadiusInput.value * 1000);
         fetchPinRepeaters();
     });
 
