@@ -13,6 +13,7 @@
     var heatmapGlowLayer = L.layerGroup().addTo(map);
     var markerLayer = L.layerGroup().addTo(map);
     var routeLayer = null;
+    var corridorLayer = null;
     var routePoints = null; // stored [lat, lng] pairs for re-fetching on band change
     var isRouteMode = false;
     var isPinMode = false;
@@ -434,6 +435,76 @@
             });
     }
 
+    // === Corridor visualization ===
+    function offsetPoint(lat, lng, bearing, distKm) {
+        var R = 6371;
+        var lat1 = lat * Math.PI / 180;
+        var lng1 = lng * Math.PI / 180;
+        var brng = bearing * Math.PI / 180;
+        var d = distKm / R;
+        var lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng));
+        var lng2 = lng1 + Math.atan2(Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
+            Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+        return [lat2 * 180 / Math.PI, lng2 * 180 / Math.PI];
+    }
+
+    function computeCorridorPolygon(points, distKm) {
+        if (points.length < 2) return [];
+        var left = [];
+        var right = [];
+        for (var i = 0; i < points.length; i++) {
+            var bearing;
+            if (i === 0) {
+                bearing = getBearing(points[0], points[1]);
+            } else if (i === points.length - 1) {
+                bearing = getBearing(points[i - 1], points[i]);
+            } else {
+                var b1 = getBearing(points[i - 1], points[i]);
+                var b2 = getBearing(points[i], points[i + 1]);
+                bearing = averageBearing(b1, b2);
+            }
+            left.push(offsetPoint(points[i][0], points[i][1], bearing - 90, distKm));
+            right.push(offsetPoint(points[i][0], points[i][1], bearing + 90, distKm));
+        }
+        // Form a closed polygon: left side forward, right side backward
+        return left.concat(right.reverse());
+    }
+
+    function getBearing(p1, p2) {
+        var lat1 = p1[0] * Math.PI / 180;
+        var lat2 = p2[0] * Math.PI / 180;
+        var dLng = (p2[1] - p1[1]) * Math.PI / 180;
+        var y = Math.sin(dLng) * Math.cos(lat2);
+        var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function averageBearing(b1, b2) {
+        var r1 = b1 * Math.PI / 180;
+        var r2 = b2 * Math.PI / 180;
+        var x = Math.cos(r1) + Math.cos(r2);
+        var y = Math.sin(r1) + Math.sin(r2);
+        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+    }
+
+    function drawCorridor() {
+        if (corridorLayer) {
+            map.removeLayer(corridorLayer);
+            corridorLayer = null;
+        }
+        if (!routePoints || routePoints.length < 2) return;
+        var distKm = parseInt(corridorRange.value);
+        var polygon = computeCorridorPolygon(routePoints, distKm);
+        corridorLayer = L.polygon(polygon, {
+            color: "#4CAF50",
+            weight: 1,
+            fillColor: "#4CAF50",
+            fillOpacity: 0.1,
+            opacity: 0.4,
+            interactive: false,
+        }).addTo(map);
+    }
+
     function findRoute() {
         var fromAddr = fromInput.value.trim();
         var toAddr = toInput.value.trim();
@@ -466,6 +537,7 @@
 
                 // Switch to route mode
                 routePoints = latLngs;
+                drawCorridor();
                 isRouteMode = true;
                 clearBtn.style.display = "";
                 corridorRow.style.display = "";
@@ -486,6 +558,10 @@
         if (routeLayer) {
             map.removeLayer(routeLayer);
             routeLayer = null;
+        }
+        if (corridorLayer) {
+            map.removeLayer(corridorLayer);
+            corridorLayer = null;
         }
         routePoints = null;
         isRouteMode = false;
@@ -748,9 +824,13 @@
 
     corridorRange.addEventListener("input", function () {
         corridorVal.textContent = corridorRange.value;
+        if (isRouteMode) drawCorridor();
     });
     corridorRange.addEventListener("change", function () {
-        if (isRouteMode) fetchRouteRepeaters();
+        if (isRouteMode) {
+            drawCorridor();
+            fetchRouteRepeaters();
+        }
     });
 
     routeBtn.addEventListener("click", findRoute);
