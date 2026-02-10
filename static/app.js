@@ -581,6 +581,7 @@
         routeListEl.innerHTML = "";
         fromInput.value = "";
         toInput.value = "";
+        updateRouteBtn();
         fetchRepeaters();
     }
 
@@ -861,6 +862,12 @@
             fetchRouteRepeaters();
         }
     });
+
+    function updateRouteBtn() {
+        routeBtn.disabled = !fromInput.value.trim() || !toInput.value.trim();
+    }
+    fromInput.addEventListener("input", updateRouteBtn);
+    toInput.addEventListener("input", updateRouteBtn);
 
     routeBtn.addEventListener("click", findRoute);
     clearBtn.addEventListener("click", clearRoute);
