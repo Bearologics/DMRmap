@@ -17,19 +17,20 @@ import (
 )
 
 type bmDeviceResponse struct {
-	ID                  int    `json:"id"`
-	LastSeen            string `json:"last_seen"`
-	Tx                  string `json:"tx"`
-	Rx                  string `json:"rx"`
-	Status              int    `json:"status"`
-	StatusText          string `json:"statusText"`
-	Hardware            string `json:"hardware"`
-	Firmware            string `json:"firmware"`
-	Pep                 int    `json:"pep"`
-	Agl                 int    `json:"agl"`
-	Website             string `json:"website"`
+	ID               int    `json:"id"`
+	LastSeen         string `json:"last_seen"`
+	Tx               string `json:"tx"`
+	Rx               string `json:"rx"`
+	Status           int    `json:"status"`
+	StatusText       string `json:"statusText"`
+	Hardware         string `json:"hardware"`
+	Firmware         string `json:"firmware"`
+	Pep              int    `json:"pep"`
+	Agl              int    `json:"agl"`
+	Website          string `json:"website"`
 	PriorityDescription string `json:"priorityDescription"`
-	Description         string `json:"description"`
+	Description      string `json:"description"`
+	LastKnownMaster  int    `json:"lastKnownMaster"`
 }
 
 func startBMDeviceSync(db *sql.DB) {
@@ -89,7 +90,7 @@ func runBMDeviceSync(db *sql.DB) {
 	ctx := context.Background()
 
 	var mu sync.Mutex
-	updated, errors, inactive := 0, 0, 0
+	updated, errors, inactive, removedBM := 0, 0, 0, 0
 	inactiveThreshold := time.Now().Add(-7 * 24 * time.Hour)
 
 	for _, rf := range rptrs {
@@ -183,11 +184,21 @@ func runBMDeviceSync(db *sql.DB) {
 				updated++
 			}
 			mu.Unlock()
+
+			// Remove Brandmeister tag if no valid master server (0 = unset, 9999 = placeholder)
+			if device.LastKnownMaster == 0 || device.LastKnownMaster == 9999 {
+				if _, err := db.Exec(`UPDATE repeaters SET networks = array_remove(networks, 'Brandmeister') WHERE id = $1`, rf.ID); err == nil {
+					log.Printf("BM device sync: removed Brandmeister tag from %d (%s) — no valid master", rf.ID, rf.Callsign)
+					mu.Lock()
+					removedBM++
+					mu.Unlock()
+				}
+			}
 		}(rf)
 	}
 
 	wg.Wait()
-	log.Printf("BM device sync complete: %d updated, %d inactive, %d errors", updated, inactive, errors)
+	log.Printf("BM device sync complete: %d updated, %d inactive, %d removed BM tag, %d errors", updated, inactive, removedBM, errors)
 }
 
 // stripHTML removes HTML tags from a string.
