@@ -171,6 +171,24 @@
 
         .logout-btn:hover { background: var(--hover-bg); }
 
+        .topbar-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .topbar-btn:hover { background: var(--hover-bg); }
+
+        .topbar-btn:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
         .table-wrap {
             overflow-x: auto;
             padding: 16px 24px;
@@ -456,6 +474,7 @@
         <h1>DMRmap Admin</h1>
         <input type="text" class="search-input" id="search-input" placeholder="Search callsign, city, country, network..." />
         <span class="topbar-info" id="total-info"></span>
+        <button class="topbar-btn" id="backfill-bm-btn">Backfill BM</button>
         <button class="logout-btn" id="logout-btn">Logout</button>
     </div>
     <div class="table-wrap">
@@ -902,6 +921,26 @@
         sessionStorage.removeItem("admin_token");
         tokenInput.value = "";
         showLogin();
+    });
+
+    // Backfill BM
+    var backfillBtn = document.getElementById("backfill-bm-btn");
+    backfillBtn.addEventListener("click", function () {
+        if (!confirm("Download BrandMeister repeater list and add the Brandmeister network tag to all matching repeaters that are missing it?")) return;
+        backfillBtn.disabled = true;
+        backfillBtn.textContent = "Running...";
+        apiFetch("/admin/api/repeaters/backfill-bm", { method: "POST" })
+            .then(function (data) {
+                backfillBtn.disabled = false;
+                backfillBtn.textContent = "Backfill BM";
+                alert("Updated " + data.updated + " repeater" + (data.updated !== 1 ? "s" : "") + ".");
+                if (data.updated > 0) fetchRepeaters();
+            })
+            .catch(function (err) {
+                backfillBtn.disabled = false;
+                backfillBtn.textContent = "Backfill BM";
+                if (err.message !== "unauthorized") alert("Backfill failed: " + err.message);
+            });
     });
 
     // Search
