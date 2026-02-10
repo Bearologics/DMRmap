@@ -13,6 +13,12 @@ type apiResponse struct {
 	Count     int        `json:"count"`
 }
 
+type searchResponse struct {
+	Repeaters []Repeater `json:"repeaters"`
+	Count     int        `json:"count"`
+	Total     int        `json:"total"`
+}
+
 type routeRequest struct {
 	Points   [][2]float64 `json:"points"`
 	Band     string       `json:"band"`
@@ -20,6 +26,70 @@ type routeRequest struct {
 	Network  []string     `json:"network"`
 	Hotspots bool         `json:"hotspots"`
 	Inactive bool         `json:"inactive"`
+}
+
+func handleSearchRepeaters(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		q := strings.TrimSpace(r.URL.Query().Get("q"))
+		if q == "" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(searchResponse{Repeaters: []Repeater{}, Count: 0, Total: 0})
+			return
+		}
+
+		limit := 25
+		if v := r.URL.Query().Get("limit"); v != "" {
+			if p, err := strconv.Atoi(v); err == nil && p > 0 {
+				limit = p
+			}
+		}
+		if limit > 200 {
+			limit = 200
+		}
+
+		repeaters, total, err := queryRepeaterSearch(db, q, limit)
+		if err != nil {
+			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(searchResponse{
+			Repeaters: repeaters,
+			Count:     len(repeaters),
+			Total:     total,
+		})
+	}
+}
+
+func handleRepeaterByID(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		idStr := r.URL.Query().Get("id")
+		id, err := strconv.Atoi(idStr)
+		if err != nil || id <= 0 {
+			http.Error(w, `{"error":"missing or invalid id"}`, http.StatusBadRequest)
+			return
+		}
+
+		rpt, err := queryRepeaterByID(db, id)
+		if err != nil {
+			http.Error(w, `{"error":"repeater not found"}`, http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(rpt)
+	}
 }
 
 func handleRepeaters(db *sql.DB) http.HandlerFunc {

@@ -36,6 +36,8 @@ func main() {
 	mux.HandleFunc("/api/repeaters", handleRepeaters(db))
 	mux.HandleFunc("/api/repeaters/radius", handleRadiusRepeaters(db))
 	mux.HandleFunc("/api/repeaters/route", handleRouteRepeaters(db))
+	mux.HandleFunc("/api/repeater", handleRepeaterByID(db))
+	mux.HandleFunc("/api/repeaters/search", handleSearchRepeaters(db))
 
 	if adminToken := os.Getenv("ADMIN_TOKEN"); adminToken != "" {
 		mux.HandleFunc("/admin/", handleAdminPage())

@@ -15,6 +15,11 @@
             <label class="band-label band-70cm"><input type="checkbox" id="band-70cm" checked> 70cm</label>
             <span id="count" class="count"></span>
         </div>
+        <div class="controls-row search-row">
+            <input type="text" id="search-input" placeholder="Search callsign, city, ID..." autocomplete="off" />
+            <button type="button" id="search-clear" class="search-clear-btn" style="display:none">&times;</button>
+        </div>
+        <div id="search-list" class="pin-list" style="display:none"></div>
         <div class="controls-row network-row">
             <label class="net-label net-bm"><input type="checkbox" id="net-bm" checked> BM</label>
             <label class="net-label net-dmrplus"><input type="checkbox" id="net-dmrplus"> DMR+</label>

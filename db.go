@@ -368,6 +368,73 @@ func distToSegmentWithParam(pLat, pLng, aLat, aLng, bLat, bLng float64) (dist, t
 	return math.Sqrt(dx*dx + dy*dy), t
 }
 
+func queryRepeaterSearch(db *sql.DB, search string, limit int) ([]Repeater, int, error) {
+	if limit <= 0 || limit > 200 {
+		limit = 25
+	}
+	pattern := "%" + search + "%"
+	where := `WHERE callsign ILIKE $1 OR city ILIKE $1 OR state ILIKE $1 OR country ILIKE $1 OR network ILIKE $1 OR id::text = $2`
+
+	var total int
+	err := db.QueryRow("SELECT COUNT(*) FROM repeaters "+where, pattern, search).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	rows, err := db.Query(`SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
+		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
+		import_freq_inconsistent, last_polled
+		FROM repeaters `+where+` ORDER BY callsign LIMIT $3`, pattern, search, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	threshold := time.Now().Add(-7 * 24 * time.Hour)
+	var results []Repeater
+	for rows.Next() {
+		var r Repeater
+		if err := rows.Scan(&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
+			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
+			&r.ColorCode, &r.TsLinked, &r.Trustee,
+			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+			&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
+			&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
+			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
+			return nil, 0, err
+		}
+		r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
+		results = append(results, r)
+	}
+	if results == nil {
+		results = []Repeater{}
+	}
+	return results, total, rows.Err()
+}
+
+func queryRepeaterByID(db *sql.DB, id int) (*Repeater, error) {
+	var r Repeater
+	err := db.QueryRow(`SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
+		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
+		import_freq_inconsistent, last_polled
+		FROM repeaters WHERE id = $1`, id).Scan(
+		&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
+		&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
+		&r.ColorCode, &r.TsLinked, &r.Trustee,
+		&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+		&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
+		&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
+		&r.ImportFreqInconsistent, &r.LastPolled)
+	if err != nil {
+		return nil, err
+	}
+	threshold := time.Now().Add(-7 * 24 * time.Hour)
+	r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
+	return &r, nil
+}
+
 func updateRepeater(db *sql.DB, r Repeater) error {
 	_, err := db.Exec(`UPDATE repeaters SET
 		callsign=$2, freq_tx=$3, freq_rx=$4, freq_offset=$5, band=$6,

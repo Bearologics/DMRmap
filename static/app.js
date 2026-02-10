@@ -17,6 +17,7 @@
     var routePoints = null; // stored [lat, lng] pairs for re-fetching on band change
     var isRouteMode = false;
     var isPinMode = false;
+    var isSearchMode = false;
     var pinMarker = null;
     var pinCircle = null;
     var pinLatLng = null;
@@ -53,6 +54,9 @@
     var pinClearBtn = document.getElementById("pin-clear");
     var pinListEl = document.getElementById("pin-list");
     var routeListEl = document.getElementById("route-list");
+    var searchInput = document.getElementById("search-input");
+    var searchListEl = document.getElementById("search-list");
+    var searchClearBtn = document.getElementById("search-clear");
 
     clearBtn.style.display = "none";
 
@@ -317,7 +321,7 @@
 
     // === Viewport mode ===
     function fetchRepeaters() {
-        if (isRouteMode || isPinMode) return;
+        if (isRouteMode || isPinMode || isSearchMode) return;
 
         if (getSelectedNetworks() === "none") {
             markerLayer.clearLayers();
@@ -516,6 +520,7 @@
         if (!fromAddr || !toAddr) return;
 
         if (isPinMode) clearPin();
+        if (isSearchMode) clearSearch();
         routeBtn.disabled = true;
         routeBtn.innerHTML = '<span class="spinner"></span>Routing...';
         showStatus("Geocoding...");
@@ -623,10 +628,18 @@
             var item = document.createElement("div");
             item.className = "pin-list-item";
             var bandColor = r.band === "2m" ? "#1976D2" : "#D32F2F";
+            var detail;
+            if (r.distance !== undefined && r.distance !== null) {
+                detail = '<span class="dist">' + r.distance + " km</span>";
+            } else {
+                var loc = r.city || "";
+                if (r.country) loc += (loc ? ", " : "") + r.country;
+                detail = '<span class="dist">' + escapeHtml(loc) + "</span>";
+            }
             item.innerHTML =
                 '<a class="callsign" href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + "</a>" +
                 '<span class="freq" style="color:' + bandColor + '">' + r.freq_tx.toFixed(4) + "</span>" +
-                '<span class="dist">' + r.distance + " km</span>";
+                detail;
             item.addEventListener("click", function (e) {
                 if (e.target.closest("a")) return;
                 map.setView([r.lat, r.lng], 14);
@@ -801,12 +814,13 @@
     });
 
     map.on("click", function (e) {
-        if (isRouteMode) return;
+        if (isRouteMode || isSearchMode) return;
         placePin(e.latlng);
     });
 
     function refetchActive() {
-        if (isPinMode) fetchPinRepeaters();
+        if (isSearchMode) doSearch();
+        else if (isPinMode) fetchPinRepeaters();
         else if (isRouteMode) fetchRouteRepeaters();
         else fetchRepeaters();
     }
@@ -859,6 +873,123 @@
         if (e.key === "Enter") toInput.focus();
     });
 
+    // === Search ===
+    var searchTimer = null;
+    var searchController = null;
+
+    function clearSearch() {
+        isSearchMode = false;
+        searchListEl.style.display = "none";
+        searchListEl.innerHTML = "";
+        searchInput.value = "";
+        searchClearBtn.style.display = "none";
+        if (window.location.hash) history.replaceState(null, "", window.location.pathname);
+    }
+
+    function doSearch() {
+        var q = searchInput.value.trim();
+        if (q.length < 2) {
+            if (isSearchMode) {
+                clearSearch();
+                fetchRepeaters();
+            }
+            return;
+        }
+
+        // Enter search mode: clear pin/route
+        if (isPinMode) clearPin();
+        if (isRouteMode) clearRoute();
+        isSearchMode = true;
+        searchClearBtn.style.display = "";
+        history.replaceState(null, "", "#" + encodeURIComponent(q));
+
+        if (searchController) searchController.abort();
+        searchController = new AbortController();
+        showStatus("Searching...");
+
+        fetch("/api/repeaters/search?q=" + encodeURIComponent(q), { signal: searchController.signal })
+            .then(function (resp) {
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
+                return resp.json();
+            })
+            .then(function (data) {
+                displayRepeaters(data.repeaters);
+                showCount(data.count);
+                renderRepeaterList(searchListEl, data.repeaters);
+                if (data.total > data.count) {
+                    var msg = document.createElement("div");
+                    msg.className = "search-more-msg";
+                    msg.textContent = "Showing " + data.count + " of " + data.total + " results";
+                    searchListEl.appendChild(msg);
+                }
+                searchListEl.style.display = "";
+            })
+            .catch(function (err) {
+                if (err.name === "AbortError") return;
+                console.error("Search error:", err);
+                showStatus("Error");
+            });
+    }
+
+    searchInput.addEventListener("input", function () {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(doSearch, 300);
+    });
+
+    searchInput.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+            if (isSearchMode) {
+                clearSearch();
+                fetchRepeaters();
+            }
+            searchInput.blur();
+        }
+    });
+
+    searchClearBtn.addEventListener("click", function () {
+        clearSearch();
+        fetchRepeaters();
+    });
+
+    // === Hash navigation ===
+    function checkHash() {
+        var hash = decodeURIComponent(window.location.hash.replace("#", ""));
+        if (!hash) return;
+
+        var id = parseInt(hash);
+        if (id > 0) {
+            fetch("/api/repeater?id=" + id)
+                .then(function (resp) {
+                    if (!resp.ok) throw new Error("HTTP " + resp.status);
+                    return resp.json();
+                })
+                .then(function (r) {
+                    map.setView([r.lat, r.lng], 14);
+                    setTimeout(function () {
+                        markerLayer.eachLayer(function (layer) {
+                            if (layer.getLatLng &&
+                                layer.getLatLng().lat === r.lat &&
+                                layer.getLatLng().lng === r.lng) {
+                                layer.openPopup();
+                            }
+                        });
+                    }, 600);
+                })
+                .catch(function (err) {
+                    console.error("Hash nav error:", err);
+                });
+        } else {
+            searchInput.value = hash;
+            doSearch();
+        }
+    }
+
+    window.addEventListener("hashchange", checkHash);
+
     // === Init ===
-    fetchRepeaters();
+    if (window.location.hash) {
+        checkHash();
+    } else {
+        fetchRepeaters();
+    }
 })();

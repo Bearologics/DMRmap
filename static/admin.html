@@ -550,6 +550,7 @@
         loginWrap.style.display = "none";
         adminWrap.style.display = "block";
         fetchRepeaters();
+        checkHash();
     }
 
     function showLogin() {
@@ -751,12 +752,36 @@
         detailBody.innerHTML = html;
         detailOverlay.style.display = "block";
         detailPanel.classList.add("open");
+        history.replaceState(null, "", "#" + r.id);
+    }
+
+    function openDetailByID(id) {
+        // Check if repeater is already loaded in current page
+        for (var i = 0; i < currentRepeaters.length; i++) {
+            if (currentRepeaters[i].id === id) {
+                openDetail(i);
+                return;
+            }
+        }
+        // Otherwise search for it via API
+        apiFetch("/admin/api/repeaters?q=" + id + "&per_page=50")
+            .then(function (data) {
+                for (var i = 0; i < data.repeaters.length; i++) {
+                    if (data.repeaters[i].id === id) {
+                        currentRepeaters = data.repeaters;
+                        openDetail(i);
+                        return;
+                    }
+                }
+            })
+            .catch(function () {});
     }
 
     function closeDetail() {
         detailOverlay.style.display = "none";
         detailPanel.classList.remove("open");
         editingRepeater = null;
+        history.replaceState(null, "", window.location.pathname);
     }
 
     function collectFormData() {
@@ -881,6 +906,16 @@
             fetchRepeaters();
         }
     });
+
+    // Hash navigation
+    function checkHash() {
+        var hash = window.location.hash.replace("#", "");
+        var id = parseInt(hash);
+        if (!id || id <= 0) return;
+        openDetailByID(id);
+    }
+
+    window.addEventListener("hashchange", checkHash);
 
     // Init
     if (token) {

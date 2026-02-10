@@ -229,6 +229,54 @@ html, body {
     white-space: nowrap;
 }
 
+.search-row {
+    margin-top: 6px;
+    position: relative;
+}
+
+.search-row input[type="text"] {
+    width: 100%;
+    padding: 7px 28px 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 13px;
+    outline: none;
+    background: var(--input-bg);
+    color: var(--text);
+}
+
+.search-row input[type="text"]:focus {
+    border-color: #4CAF50;
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 16px;
+    color: var(--text-fainter);
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+    border-radius: 3px;
+}
+
+.search-clear-btn:hover {
+    color: var(--text-muted);
+    background: var(--hover-bg);
+}
+
+.search-more-msg {
+    padding: 6px 2px;
+    font-size: 11px;
+    color: var(--text-fainter);
+    text-align: center;
+    border-top: 1px solid var(--border-lighter);
+}
+
 .route-row {
     margin-top: 6px;
 }
