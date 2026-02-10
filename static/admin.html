@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DMRmap Admin</title>
+    <style>
+        :root {
+            --bg: #fff;
+            --bg-secondary: #f8f9fa;
+            --text: #333;
+            --text-muted: #666;
+            --text-faint: #999;
+            --border: #ddd;
+            --border-light: #eee;
+            --hover-bg: #f0f4ff;
+            --accent: #4CAF50;
+            --accent-hover: #43A047;
+            --input-bg: #fff;
+            --shadow: rgba(0, 0, 0, 0.08);
+            --tag-blue-bg: #e3f2fd;
+            --tag-blue-text: #1565c0;
+            --tag-red-bg: #ffebee;
+            --tag-red-text: #c62828;
+            --tag-green-bg: #e8f5e9;
+            --tag-green-text: #2e7d32;
+            --tag-gray-bg: #f5f5f5;
+            --tag-gray-text: #616161;
+            --danger: #ef5350;
+            --overlay-bg: rgba(0, 0, 0, 0.4);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1e1e2e;
+                --bg-secondary: #181825;
+                --text: #cdd6f4;
+                --text-muted: #a6adc8;
+                --text-faint: #6c7086;
+                --border: #45475a;
+                --border-light: #313244;
+                --hover-bg: #313244;
+                --input-bg: #313244;
+                --shadow: rgba(0, 0, 0, 0.3);
+                --tag-blue-bg: #1e3a5f;
+                --tag-blue-text: #89b4fa;
+                --tag-red-bg: #4a1c1c;
+                --tag-red-text: #f38ba8;
+                --tag-green-bg: #1c3a1c;
+                --tag-green-text: #a6e3a1;
+                --tag-gray-bg: #313244;
+                --tag-gray-text: #a6adc8;
+                --overlay-bg: rgba(0, 0, 0, 0.6);
+            }
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .login-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .login-box {
+            background: var(--bg);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 12px var(--shadow);
+            width: 340px;
+        }
+
+        .login-box h1 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text);
+            outline: none;
+        }
+
+        .login-box input:focus { border-color: var(--accent); }
+
+        .login-box button {
+            width: 100%;
+            margin-top: 12px;
+            padding: 10px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .login-box button:hover { background: var(--accent-hover); }
+
+        .login-error {
+            color: var(--danger);
+            font-size: 12px;
+            margin-top: 8px;
+            display: none;
+        }
+
+        .admin-wrap { display: none; }
+
+        .topbar {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border-light);
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .topbar h1 {
+            font-size: 16px;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+
+        .search-input {
+            flex: 1;
+            max-width: 400px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--input-bg);
+            color: var(--text);
+            outline: none;
+        }
+
+        .search-input:focus { border-color: var(--accent); }
+
+        .topbar-info {
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--text-faint);
+            white-space: nowrap;
+        }
+
+        .logout-btn {
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .logout-btn:hover { background: var(--hover-bg); }
+
+        .table-wrap {
+            overflow-x: auto;
+            padding: 16px 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            background: var(--bg);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px var(--shadow);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            text-align: left;
+            padding: 10px 12px;
+            white-space: nowrap;
+            color: var(--text-muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-light);
+            white-space: nowrap;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            vertical-align: top;
+        }
+
+        tr:hover td { background: var(--hover-bg); }
+        tr { cursor: pointer; }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .tag-2m { background: var(--tag-blue-bg); color: var(--tag-blue-text); }
+        .tag-70cm { background: var(--tag-red-bg); color: var(--tag-red-text); }
+        .tag-active { background: var(--tag-green-bg); color: var(--tag-green-text); }
+        .tag-inactive { background: var(--tag-red-bg); color: var(--tag-red-text); }
+        .tag-gray { background: var(--tag-gray-bg); color: var(--tag-gray-text); }
+        .tag-yes { background: var(--tag-blue-bg); color: var(--tag-blue-text); }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .pagination button {
+            padding: 6px 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg);
+            color: var(--text);
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .pagination button:hover:not(:disabled) { background: var(--hover-bg); }
+
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-faint);
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: var(--text-faint);
+        }
+
+        a { color: var(--tag-blue-text); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Detail panel overlay */
+        .detail-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: var(--overlay-bg);
+            z-index: 100;
+        }
+
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 520px;
+            max-width: 100vw;
+            background: var(--bg);
+            box-shadow: -4px 0 24px var(--shadow);
+            z-index: 101;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .detail-panel.open {
+            display: flex;
+        }
+
+        .detail-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            flex-shrink: 0;
+        }
+
+        .detail-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .detail-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .detail-close:hover { background: var(--hover-bg); }
+
+        .detail-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .detail-field {
+            margin-bottom: 14px;
+        }
+
+        .detail-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .detail-field input,
+        .detail-field textarea,
+        .detail-field select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--input-bg);
+            color: var(--text);
+            outline: none;
+            font-family: inherit;
+        }
+
+        .detail-field input:focus,
+        .detail-field textarea:focus,
+        .detail-field select:focus {
+            border-color: var(--accent);
+        }
+
+        .detail-field textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .detail-field .readonly-value {
+            padding: 8px 0;
+            font-size: 13px;
+            color: var(--text-faint);
+        }
+
+        .detail-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .detail-row .detail-field {
+            flex: 1;
+        }
+
+        .detail-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .btn-save {
+            padding: 8px 20px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-save:hover { background: var(--accent-hover); }
+
+        .btn-save:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        .btn-cancel {
+            padding: 8px 20px;
+            background: none;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+
+        .btn-cancel:hover { background: var(--hover-bg); }
+
+        .save-status {
+            font-size: 12px;
+            align-self: center;
+            margin-right: auto;
+        }
+
+        .save-status.success { color: var(--tag-green-text); }
+        .save-status.error { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+<div class="login-wrap" id="login-wrap">
+    <div class="login-box">
+        <h1>DMRmap Admin</h1>
+        <input type="password" id="token-input" placeholder="Admin token" autofocus />
+        <button id="login-btn">Login</button>
+        <div class="login-error" id="login-error">Invalid token</div>
+    </div>
+</div>
+
+<div class="admin-wrap" id="admin-wrap">
+    <div class="topbar">
+        <h1>DMRmap Admin</h1>
+        <input type="text" class="search-input" id="search-input" placeholder="Search callsign, city, country, network..." />
+        <span class="topbar-info" id="total-info"></span>
+        <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Callsign</th>
+                    <th>Band</th>
+                    <th>TX</th>
+                    <th>RX</th>
+                    <th>Offset</th>
+                    <th>CC</th>
+                    <th>Network</th>
+                    <th>City</th>
+                    <th>State</th>
+                    <th>Country</th>
+                    <th>Status</th>
+                    <th>Timeslots</th>
+                    <th>Last Seen</th>
+                    <th>BM Status</th>
+                    <th>Hardware</th>
+                    <th>Last Polled</th>
+                </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+        </table>
+        <div id="empty-state" class="empty-state" style="display:none">No repeaters found.</div>
+        <div id="loading" class="loading">Loading...</div>
+    </div>
+    <div class="pagination" id="pagination" style="display:none">
+        <button id="prev-btn">Prev</button>
+        <span id="page-info"></span>
+        <button id="next-btn">Next</button>
+    </div>
+</div>
+
+<div class="detail-overlay" id="detail-overlay"></div>
+<div class="detail-panel" id="detail-panel">
+    <div class="detail-header">
+        <h2 id="detail-title">Repeater</h2>
+        <button class="detail-close" id="detail-close">&times;</button>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+    <div class="detail-footer">
+        <span class="save-status" id="save-status"></span>
+        <button class="btn-cancel" id="detail-cancel">Cancel</button>
+        <button class="btn-save" id="detail-save">Save</button>
+    </div>
+</div>
+
+<script>
+(function () {
+    "use strict";
+
+    var token = sessionStorage.getItem("admin_token") || "";
+    var currentPage = 1;
+    var perPage = 50;
+    var totalCount = 0;
+    var debounceTimer = null;
+    var currentRepeaters = [];
+
+    var loginWrap = document.getElementById("login-wrap");
+    var adminWrap = document.getElementById("admin-wrap");
+    var tokenInput = document.getElementById("token-input");
+    var loginBtn = document.getElementById("login-btn");
+    var loginError = document.getElementById("login-error");
+    var logoutBtn = document.getElementById("logout-btn");
+    var searchInput = document.getElementById("search-input");
+    var tableBody = document.getElementById("table-body");
+    var emptyState = document.getElementById("empty-state");
+    var loadingEl = document.getElementById("loading");
+    var totalInfo = document.getElementById("total-info");
+    var pagination = document.getElementById("pagination");
+    var prevBtn = document.getElementById("prev-btn");
+    var nextBtn = document.getElementById("next-btn");
+    var pageInfo = document.getElementById("page-info");
+
+    var detailOverlay = document.getElementById("detail-overlay");
+    var detailPanel = document.getElementById("detail-panel");
+    var detailTitle = document.getElementById("detail-title");
+    var detailBody = document.getElementById("detail-body");
+    var detailClose = document.getElementById("detail-close");
+    var detailCancel = document.getElementById("detail-cancel");
+    var detailSave = document.getElementById("detail-save");
+    var saveStatus = document.getElementById("save-status");
+
+    function escapeHtml(s) {
+        if (!s) return "";
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function formatDate(s) {
+        if (!s) return "";
+        return s.replace("T", " ").substring(0, 19);
+    }
+
+    function showAdmin() {
+        loginWrap.style.display = "none";
+        adminWrap.style.display = "block";
+        fetchRepeaters();
+    }
+
+    function showLogin() {
+        adminWrap.style.display = "none";
+        loginWrap.style.display = "flex";
+        loginError.style.display = "none";
+    }
+
+    function apiFetch(url, opts) {
+        opts = opts || {};
+        opts.headers = opts.headers || {};
+        opts.headers["Authorization"] = "Bearer " + token;
+        return fetch(url, opts).then(function (resp) {
+            if (resp.status === 401) {
+                sessionStorage.removeItem("admin_token");
+                token = "";
+                showLogin();
+                throw new Error("unauthorized");
+            }
+            if (!resp.ok) throw new Error("HTTP " + resp.status);
+            return resp.json();
+        });
+    }
+
+    function fetchRepeaters() {
+        loadingEl.style.display = "";
+        emptyState.style.display = "none";
+        tableBody.innerHTML = "";
+
+        var q = searchInput.value.trim();
+        var params = new URLSearchParams({
+            page: currentPage,
+            per_page: perPage
+        });
+        if (q) params.set("q", q);
+
+        apiFetch("/admin/api/repeaters?" + params)
+            .then(function (data) {
+                loadingEl.style.display = "none";
+                totalCount = data.total;
+                totalInfo.textContent = data.total + " repeater" + (data.total !== 1 ? "s" : "") + " total";
+                currentRepeaters = data.repeaters;
+                renderTable(data.repeaters);
+                renderPagination(data.page, data.per_page, data.total);
+            })
+            .catch(function (err) {
+                if (err.message === "unauthorized") return;
+                loadingEl.textContent = "Error loading data.";
+            });
+    }
+
+    function renderTable(repeaters) {
+        tableBody.innerHTML = "";
+        if (!repeaters.length) {
+            emptyState.style.display = "";
+            pagination.style.display = "none";
+            return;
+        }
+        emptyState.style.display = "none";
+
+        repeaters.forEach(function (r, idx) {
+            var tr = document.createElement("tr");
+            var bandTag = r.band === "2m"
+                ? '<span class="tag tag-2m">2m</span>'
+                : '<span class="tag tag-70cm">70cm</span>';
+
+            var statusTag = r.inactive
+                ? '<span class="tag tag-inactive">Inactive</span>'
+                : '<span class="tag tag-active">' + escapeHtml(r.status) + '</span>';
+
+            var bmStatus = r.bm_status_text || (r.bm_status !== null ? "Code " + r.bm_status : "");
+
+            tr.innerHTML =
+                '<td>' + r.id + '</td>' +
+                '<td><strong>' + escapeHtml(r.callsign) + '</strong></td>' +
+                '<td>' + bandTag + '</td>' +
+                '<td>' + r.freq_tx.toFixed(4) + '</td>' +
+                '<td>' + (r.freq_rx ? r.freq_rx.toFixed(4) : '') + '</td>' +
+                '<td>' + escapeHtml(r.freq_offset) + '</td>' +
+                '<td>' + r.color_code + '</td>' +
+                '<td>' + (r.network ? '<span class="tag tag-gray">' + escapeHtml(r.network) + '</span>' : '') + '</td>' +
+                '<td>' + escapeHtml(r.city) + '</td>' +
+                '<td>' + escapeHtml(r.state) + '</td>' +
+                '<td>' + escapeHtml(r.country) + '</td>' +
+                '<td>' + statusTag + '</td>' +
+                '<td>' + escapeHtml(r.ts_linked) + '</td>' +
+                '<td>' + formatDate(r.last_seen) + '</td>' +
+                '<td>' + escapeHtml(bmStatus) + '</td>' +
+                '<td>' + escapeHtml(r.hardware) + '</td>' +
+                '<td>' + formatDate(r.last_polled) + '</td>';
+
+            tr.addEventListener("click", function () {
+                openDetail(idx);
+            });
+            tableBody.appendChild(tr);
+        });
+    }
+
+    function renderPagination(page, pp, total) {
+        var totalPages = Math.ceil(total / pp) || 1;
+        if (totalPages <= 1) {
+            pagination.style.display = "none";
+            return;
+        }
+        pagination.style.display = "flex";
+        pageInfo.textContent = "Page " + page + " of " + totalPages;
+        prevBtn.disabled = page <= 1;
+        nextBtn.disabled = page >= totalPages;
+    }
+
+    // --- Detail panel ---
+
+    var editingRepeater = null;
+
+    var fields = [
+        { key: "id", label: "ID", type: "readonly" },
+        { key: "callsign", label: "Callsign", type: "text" },
+        { key: "freq_tx", label: "TX Frequency", type: "number", step: "0.0001" },
+        { key: "freq_rx", label: "RX Frequency", type: "number", step: "0.0001" },
+        { key: "freq_offset", label: "Frequency Offset", type: "text" },
+        { key: "band", label: "Band", type: "select", options: ["2m", "70cm"] },
+        { key: "lat", label: "Latitude", type: "number", step: "0.000001" },
+        { key: "lng", label: "Longitude", type: "number", step: "0.000001" },
+        { key: "city", label: "City", type: "text" },
+        { key: "state", label: "State", type: "text" },
+        { key: "country", label: "Country", type: "text" },
+        { key: "color_code", label: "Color Code", type: "number", step: "1" },
+        { key: "ts_linked", label: "Timeslots Linked", type: "text" },
+        { key: "trustee", label: "Trustee", type: "text" },
+        { key: "ipsc_network", label: "IPSC Network", type: "text" },
+        { key: "network", label: "Network", type: "text" },
+        { key: "hotspot", label: "Hotspot", type: "select", options: [{ v: 0, l: "No" }, { v: 1, l: "Yes" }] },
+        { key: "status", label: "Status", type: "text" },
+        { key: "last_seen", label: "Last Seen", type: "readonly" },
+        { key: "bm_status", label: "BM Status Code", type: "readonly" },
+        { key: "bm_status_text", label: "BM Status Text", type: "readonly" },
+        { key: "hardware", label: "Hardware", type: "text" },
+        { key: "firmware", label: "Firmware", type: "text" },
+        { key: "pep", label: "Power (W)", type: "number", step: "1" },
+        { key: "agl", label: "Antenna Height (m)", type: "number", step: "1" },
+        { key: "website", label: "Website", type: "text" },
+        { key: "description", label: "Description", type: "textarea" },
+        { key: "import_freq_inconsistent", label: "Frequency Inconsistency", type: "readonly" },
+        { key: "last_polled", label: "Last Polled", type: "readonly" }
+    ];
+
+    function openDetail(idx) {
+        var r = currentRepeaters[idx];
+        if (!r) return;
+        editingRepeater = JSON.parse(JSON.stringify(r));
+
+        detailTitle.textContent = r.callsign + " (#" + r.id + ")";
+        saveStatus.textContent = "";
+        saveStatus.className = "save-status";
+        detailSave.disabled = false;
+
+        var html = "";
+        for (var i = 0; i < fields.length; i++) {
+            var f = fields[i];
+            var val = r[f.key];
+            if (val === null || val === undefined) val = "";
+
+            html += '<div class="detail-field">';
+            html += '<label>' + escapeHtml(f.label) + '</label>';
+
+            if (f.type === "readonly") {
+                var display = val;
+                if (f.key === "last_seen" || f.key === "last_polled") display = formatDate(String(val));
+                if (f.key === "import_freq_inconsistent") display = val ? "Yes" : "No";
+                if (f.key === "bm_status") display = val !== "" && val !== null ? String(val) : "N/A";
+                html += '<div class="readonly-value">' + escapeHtml(String(display || "N/A")) + '</div>';
+            } else if (f.type === "select") {
+                html += '<select data-key="' + f.key + '">';
+                var opts = f.options;
+                for (var j = 0; j < opts.length; j++) {
+                    var optVal, optLabel;
+                    if (typeof opts[j] === "object") {
+                        optVal = opts[j].v;
+                        optLabel = opts[j].l;
+                    } else {
+                        optVal = opts[j];
+                        optLabel = opts[j];
+                    }
+                    var sel = String(val) === String(optVal) ? " selected" : "";
+                    html += '<option value="' + escapeHtml(String(optVal)) + '"' + sel + '>' + escapeHtml(String(optLabel)) + '</option>';
+                }
+                html += '</select>';
+            } else if (f.type === "textarea") {
+                html += '<textarea data-key="' + f.key + '" rows="3">' + escapeHtml(String(val)) + '</textarea>';
+            } else {
+                var inputType = f.type === "number" ? "number" : "text";
+                var stepAttr = f.step ? ' step="' + f.step + '"' : '';
+                html += '<input type="' + inputType + '"' + stepAttr + ' data-key="' + f.key + '" value="' + escapeHtml(String(val)) + '" />';
+            }
+
+            html += '</div>';
+        }
+
+        detailBody.innerHTML = html;
+        detailOverlay.style.display = "block";
+        detailPanel.classList.add("open");
+    }
+
+    function closeDetail() {
+        detailOverlay.style.display = "none";
+        detailPanel.classList.remove("open");
+        editingRepeater = null;
+    }
+
+    function collectFormData() {
+        if (!editingRepeater) return null;
+        var data = JSON.parse(JSON.stringify(editingRepeater));
+        var inputs = detailBody.querySelectorAll("[data-key]");
+        for (var i = 0; i < inputs.length; i++) {
+            var key = inputs[i].getAttribute("data-key");
+            var val = inputs[i].value;
+            var field = null;
+            for (var j = 0; j < fields.length; j++) {
+                if (fields[j].key === key) { field = fields[j]; break; }
+            }
+            if (!field) continue;
+
+            if (field.type === "number") {
+                if (field.step && field.step.indexOf(".") !== -1) {
+                    data[key] = parseFloat(val) || 0;
+                } else {
+                    data[key] = parseInt(val, 10) || 0;
+                }
+            } else if (field.type === "select" && typeof field.options[0] === "object") {
+                data[key] = parseInt(val, 10) || 0;
+            } else {
+                data[key] = val;
+            }
+        }
+        return data;
+    }
+
+    function saveDetail() {
+        var data = collectFormData();
+        if (!data) return;
+
+        detailSave.disabled = true;
+        saveStatus.textContent = "Saving...";
+        saveStatus.className = "save-status";
+
+        apiFetch("/admin/api/repeaters/update", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        })
+        .then(function () {
+            saveStatus.textContent = "Saved";
+            saveStatus.className = "save-status success";
+            detailSave.disabled = false;
+            fetchRepeaters();
+        })
+        .catch(function (err) {
+            if (err.message === "unauthorized") return;
+            saveStatus.textContent = "Error saving";
+            saveStatus.className = "save-status error";
+            detailSave.disabled = false;
+        });
+    }
+
+    detailClose.addEventListener("click", closeDetail);
+    detailCancel.addEventListener("click", closeDetail);
+    detailOverlay.addEventListener("click", closeDetail);
+    detailSave.addEventListener("click", saveDetail);
+
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && detailPanel.classList.contains("open")) {
+            closeDetail();
+        }
+    });
+
+    // Login
+    function doLogin() {
+        var t = tokenInput.value.trim();
+        if (!t) return;
+        token = t;
+        sessionStorage.setItem("admin_token", t);
+        loginError.style.display = "none";
+
+        apiFetch("/admin/api/repeaters?per_page=1")
+            .then(function () {
+                showAdmin();
+            })
+            .catch(function () {
+                loginError.style.display = "";
+                token = "";
+                sessionStorage.removeItem("admin_token");
+            });
+    }
+
+    loginBtn.addEventListener("click", doLogin);
+    tokenInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") doLogin();
+    });
+
+    // Logout
+    logoutBtn.addEventListener("click", function () {
+        token = "";
+        sessionStorage.removeItem("admin_token");
+        tokenInput.value = "";
+        showLogin();
+    });
+
+    // Search
+    searchInput.addEventListener("input", function () {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(function () {
+            currentPage = 1;
+            fetchRepeaters();
+        }, 300);
+    });
+
+    // Pagination
+    prevBtn.addEventListener("click", function () {
+        if (currentPage > 1) {
+            currentPage--;
+            fetchRepeaters();
+        }
+    });
+
+    nextBtn.addEventListener("click", function () {
+        var totalPages = Math.ceil(totalCount / perPage) || 1;
+        if (currentPage < totalPages) {
+            currentPage++;
+            fetchRepeaters();
+        }
+    });
+
+    // Init
+    if (token) {
+        showAdmin();
+    } else {
+        showLogin();
+    }
+})();
+</script>
+</body>
+</html>

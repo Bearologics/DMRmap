@@ -36,6 +36,16 @@ func main() {
 	mux.HandleFunc("/api/repeaters", handleRepeaters(db))
 	mux.HandleFunc("/api/repeaters/radius", handleRadiusRepeaters(db))
 	mux.HandleFunc("/api/repeaters/route", handleRouteRepeaters(db))
+
+	if adminToken := os.Getenv("ADMIN_TOKEN"); adminToken != "" {
+		mux.HandleFunc("/admin/", handleAdminPage())
+		adminAPI := http.NewServeMux()
+		adminAPI.HandleFunc("/admin/api/repeaters", handleAdminRepeaters(db))
+		adminAPI.HandleFunc("/admin/api/repeaters/update", handleAdminUpdateRepeater(db))
+		mux.Handle("/admin/api/", adminAuth(adminToken, adminAPI))
+		log.Println("Admin interface enabled at /admin/")
+	}
+
 	mux.Handle("/", http.FileServer(http.Dir("static")))
 
 	log.Printf("Listening on %s", addr)
