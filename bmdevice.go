@@ -56,7 +56,7 @@ func runBMDeviceSync(db *sql.DB) {
 
 	// Only poll repeaters that haven't been polled in the last 3 days
 	rows, err := db.Query(`SELECT id, callsign, freq_tx, freq_rx FROM repeaters
-		WHERE network = 'Brandmeister' AND hotspot = 0
+		WHERE networks @> ARRAY['Brandmeister'] AND hotspot = 0
 		AND (last_polled IS NULL OR last_polled < NOW() - INTERVAL '3 days')
 		ORDER BY CASE WHEN LEFT(id::text, 3) = '262' THEN 0 WHEN LEFT(id::text, 1) = '2' THEN 1 ELSE 2 END, callsign`)
 	if err != nil {

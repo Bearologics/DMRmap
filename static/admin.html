@@ -431,6 +431,13 @@
 
         .save-status.success { color: var(--tag-green-text); }
         .save-status.error { color: var(--danger); }
+
+        .multicheck-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .multicheck-label {
+            display: flex; align-items: center; gap: 4px;
+            font-size: 13px; cursor: pointer; color: var(--text);
+        }
+        .multicheck-label input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -631,7 +638,7 @@
                 '<td>' + (r.freq_rx ? r.freq_rx.toFixed(4) : '') + '</td>' +
                 '<td>' + escapeHtml(r.freq_offset) + '</td>' +
                 '<td>' + r.color_code + '</td>' +
-                '<td>' + (r.network ? '<span class="tag tag-gray">' + escapeHtml(r.network) + '</span>' : '') + '</td>' +
+                '<td>' + (r.networks && r.networks.length ? r.networks.map(function(n) { return '<span class="tag tag-gray">' + escapeHtml(n) + '</span>'; }).join(' ') : '') + '</td>' +
                 '<td>' + escapeHtml(r.city) + '</td>' +
                 '<td>' + escapeHtml(r.state) + '</td>' +
                 '<td>' + escapeHtml(r.country) + '</td>' +
@@ -681,7 +688,7 @@
         { key: "ts_linked", label: "Timeslots Linked", type: "text" },
         { key: "trustee", label: "Trustee", type: "text" },
         { key: "ipsc_network", label: "IPSC Network", type: "text" },
-        { key: "network", label: "Network", type: "select", options: [{ v: "", l: "(none)" }, "Brandmeister", "DMR+", "DMR-MARC", "TGIF", "FreeDMR", "Other"] },
+        { key: "networks", label: "Networks", type: "multicheck", options: ["Brandmeister", "DMR+", "DMR-MARC", "TGIF", "FreeDMR", "Other"] },
         { key: "hotspot", label: "Hotspot", type: "select", options: [{ v: 0, l: "No" }, { v: 1, l: "Yes" }] },
         { key: "status", label: "Status", type: "text" },
         { key: "last_seen", label: "Last Seen", type: "readonly" },
@@ -738,6 +745,14 @@
                     html += '<option value="' + escapeHtml(String(optVal)) + '"' + sel + '>' + escapeHtml(String(optLabel)) + '</option>';
                 }
                 html += '</select>';
+            } else if (f.type === "multicheck") {
+                var currentVals = val || [];
+                html += '<div data-key="' + f.key + '" class="multicheck-group">';
+                for (var j = 0; j < f.options.length; j++) {
+                    var checked = currentVals.indexOf(f.options[j]) !== -1 ? " checked" : "";
+                    html += '<label class="multicheck-label"><input type="checkbox" value="' + escapeHtml(f.options[j]) + '"' + checked + '> ' + escapeHtml(f.options[j]) + '</label>';
+                }
+                html += '</div>';
             } else if (f.type === "textarea") {
                 html += '<textarea data-key="' + f.key + '" rows="3">' + escapeHtml(String(val)) + '</textarea>';
             } else {
@@ -790,23 +805,30 @@
         var inputs = detailBody.querySelectorAll("[data-key]");
         for (var i = 0; i < inputs.length; i++) {
             var key = inputs[i].getAttribute("data-key");
-            var val = inputs[i].value;
             var field = null;
             for (var j = 0; j < fields.length; j++) {
                 if (fields[j].key === key) { field = fields[j]; break; }
             }
             if (!field) continue;
 
-            if (field.type === "number") {
+            if (field.type === "multicheck") {
+                var checkboxes = inputs[i].querySelectorAll('input[type="checkbox"]');
+                var selected = [];
+                for (var k = 0; k < checkboxes.length; k++) {
+                    if (checkboxes[k].checked) selected.push(checkboxes[k].value);
+                }
+                data[key] = selected;
+            } else if (field.type === "number") {
+                var val = inputs[i].value;
                 if (field.step && field.step.indexOf(".") !== -1) {
                     data[key] = parseFloat(val) || 0;
                 } else {
                     data[key] = parseInt(val, 10) || 0;
                 }
             } else if (field.type === "select" && typeof field.options[0] === "object" && typeof field.options[0].v === "number") {
-                data[key] = parseInt(val, 10) || 0;
+                data[key] = parseInt(inputs[i].value, 10) || 0;
             } else {
-                data[key] = val;
+                data[key] = inputs[i].value;
             }
         }
         return data;

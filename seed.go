@@ -146,7 +146,7 @@ func seedDatabase(db *sql.DB, jsonPath, bmrptrsPath string) error {
 
 	stmt, err := tx.Prepare(`INSERT INTO repeaters
 		(id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
-		 color_code, ts_linked, trustee, ipsc_network, network, hotspot, status)
+		 color_code, ts_linked, trustee, ipsc_network, networks, hotspot, status)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 		ON CONFLICT (id) DO NOTHING`)
 	if err != nil {
@@ -175,18 +175,23 @@ func seedDatabase(db *sql.DB, jsonPath, bmrptrsPath string) error {
 			freqRx = freq + off
 		}
 
-		network := classifyNetwork(r.IpscNetwork)
+		networks := classifyNetworks(r.IpscNetwork)
+		callsignUpper := strings.ToUpper(strings.TrimSpace(r.Callsign))
+		// If found in BrandMeister repeater list, ensure Brandmeister is in networks
+		if len(bmSet) > 0 && bmSet[callsignUpper] && !containsNetwork(networks, "Brandmeister") {
+			networks = append(networks, "Brandmeister")
+		}
 		hotspot := 0
 		if isHotspot(r.Offset, r.City, r.MapInfo, r.Callsign, r.Country, r.Trustee) {
 			hotspot = 1
 			hotspots++
-		} else if network == "Brandmeister" && len(bmSet) > 0 && !bmSet[strings.ToUpper(strings.TrimSpace(r.Callsign))] {
+		} else if containsNetwork(networks, "Brandmeister") && len(bmSet) > 0 && !bmSet[callsignUpper] {
 			hotspot = 1
 			hotspots++
 		}
 		if _, err := stmt.Exec(r.ID, r.Callsign, freq, freqRx, r.Offset, band, lat, lng,
 			r.City, r.State, r.Country, r.ColorCode,
-			r.TsLinked, r.Trustee, r.IpscNetwork, network, hotspot, r.Status); err != nil {
+			r.TsLinked, r.Trustee, r.IpscNetwork, StringArray(networks), hotspot, r.Status); err != nil {
 			log.Printf("Warning: skipping repeater %d (%s): %v", r.ID, r.Callsign, err)
 			skipped++
 			continue
@@ -395,32 +400,45 @@ func isPersonalCallsign(callsign, country string) bool {
 	return false
 }
 
-func classifyNetwork(raw string) string {
+func classifyNetworks(raw string) []string {
 	s := strings.ToLower(strings.TrimSpace(raw))
 	if s == "" || s == "none" || s == "n/a" || s == "?" || s == "-" || s == "no" {
-		return ""
+		return []string{}
 	}
+	var networks []string
 	if strings.Contains(s, "brandm") || s == "bm" || strings.HasPrefix(s, "bm ") ||
 		strings.HasPrefix(s, "bm,") || strings.HasPrefix(s, "bm/") ||
 		strings.Contains(s, "brand m") || strings.Contains(s, "braindm") ||
 		strings.Contains(s, "branme") || strings.Contains(s, "bramm") ||
 		strings.Contains(s, "brewmister") || s == "bmr" {
-		return "Brandmeister"
+		networks = append(networks, "Brandmeister")
 	}
 	if strings.Contains(s, "dmr-plus") || strings.Contains(s, "dmr+") ||
 		strings.Contains(s, "dmrplus") || s == "dmr plus" ||
 		strings.HasPrefix(s, "ipsc2") || s == "ipsc" {
-		return "DMR+"
+		networks = append(networks, "DMR+")
 	}
 	if strings.Contains(s, "dmr-marc") || strings.Contains(s, "dmr marc") ||
 		s == "marc" || strings.Contains(s, "dmrmarc") {
-		return "DMR-MARC"
+		networks = append(networks, "DMR-MARC")
 	}
 	if strings.Contains(s, "tgif") {
-		return "TGIF"
+		networks = append(networks, "TGIF")
 	}
 	if strings.Contains(s, "freedmr") || strings.Contains(s, "free-dmr") || strings.Contains(s, "free dmr") {
-		return "FreeDMR"
+		networks = append(networks, "FreeDMR")
 	}
-	return "Other"
+	if len(networks) == 0 {
+		return []string{"Other"}
+	}
+	return networks
+}
+
+func containsNetwork(networks []string, name string) bool {
+	for _, n := range networks {
+		if n == name {
+			return true
+		}
+	}
+	return false
 }

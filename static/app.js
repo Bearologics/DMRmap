@@ -260,10 +260,10 @@
         if (r.state) loc += ", " + escapeHtml(r.state);
         if (r.country) loc += ", " + escapeHtml(r.country);
         html += "<tr><td>Location</td><td>" + loc + "</td></tr>";
-        if (r.network)
+        if (r.networks && r.networks.length)
             html +=
                 "<tr><td>Network</td><td>" +
-                escapeHtml(r.network) +
+                r.networks.map(escapeHtml).join(", ") +
                 "</td></tr>";
         if (r.trustee)
             html +=

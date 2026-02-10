@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"log"
 	"math"
@@ -11,6 +12,84 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
+
+// StringArray maps a PostgreSQL TEXT[] column to a Go []string via database/sql.
+type StringArray []string
+
+func (a *StringArray) Scan(src interface{}) error {
+	if src == nil {
+		*a = StringArray{}
+		return nil
+	}
+	switch v := src.(type) {
+	case []byte:
+		parsed, err := parsePostgresArray(string(v))
+		if err != nil {
+			return err
+		}
+		*a = parsed
+	case string:
+		parsed, err := parsePostgresArray(v)
+		if err != nil {
+			return err
+		}
+		*a = parsed
+	default:
+		return fmt.Errorf("StringArray.Scan: unsupported type %T", src)
+	}
+	return nil
+}
+
+func (a StringArray) Value() (driver.Value, error) {
+	if a == nil || len(a) == 0 {
+		return "{}", nil
+	}
+	elems := make([]string, len(a))
+	for i, s := range a {
+		escaped := strings.ReplaceAll(s, `\`, `\\`)
+		escaped = strings.ReplaceAll(escaped, `"`, `\"`)
+		elems[i] = `"` + escaped + `"`
+	}
+	return "{" + strings.Join(elems, ",") + "}", nil
+}
+
+func parsePostgresArray(s string) ([]string, error) {
+	s = strings.TrimSpace(s)
+	if s == "{}" || s == "" {
+		return []string{}, nil
+	}
+	if s[0] != '{' || s[len(s)-1] != '}' {
+		return nil, fmt.Errorf("invalid postgres array literal: %q", s)
+	}
+	inner := s[1 : len(s)-1]
+	var result []string
+	var current strings.Builder
+	inQuote := false
+	escaped := false
+	for _, r := range inner {
+		if escaped {
+			current.WriteRune(r)
+			escaped = false
+			continue
+		}
+		if r == '\\' {
+			escaped = true
+			continue
+		}
+		if r == '"' {
+			inQuote = !inQuote
+			continue
+		}
+		if r == ',' && !inQuote {
+			result = append(result, current.String())
+			current.Reset()
+			continue
+		}
+		current.WriteRune(r)
+	}
+	result = append(result, current.String())
+	return result, nil
+}
 
 type Repeater struct {
 	ID                    int        `json:"id"`
@@ -28,7 +107,7 @@ type Repeater struct {
 	TsLinked              string     `json:"ts_linked"`
 	Trustee               string     `json:"trustee"`
 	IpscNetwork           string     `json:"ipsc_network"`
-	Network               string     `json:"network"`
+	Networks              StringArray `json:"networks"`
 	Hotspot               int        `json:"hotspot"`
 	Status                string     `json:"status"`
 	LastSeen              *time.Time `json:"last_seen"`
@@ -82,7 +161,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 	}
 
 	query := `SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
-		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		color_code, ts_linked, trustee, ipsc_network, networks, hotspot, status,
 		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
 		import_freq_inconsistent, last_polled
 		FROM repeaters WHERE lat BETWEEN ` + nextParam() + ` AND ` + nextParam() + ` AND lng BETWEEN ` + nextParam() + ` AND ` + nextParam()
@@ -106,25 +185,29 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 
 	// Network filter: only apply when not all 4 categories are selected
 	if len(networks) > 0 && len(networks) < 4 {
-		var placeholders []string
+		var networkValues []string
+		hasOther := false
 		for _, n := range networks {
 			switch n {
 			case "BM":
-				placeholders = append(placeholders, nextParam())
-				args = append(args, "Brandmeister")
+				networkValues = append(networkValues, "Brandmeister")
 			case "DMR+":
-				placeholders = append(placeholders, nextParam())
-				args = append(args, "DMR+")
+				networkValues = append(networkValues, "DMR+")
 			case "TGIF":
-				placeholders = append(placeholders, nextParam())
-				args = append(args, "TGIF")
+				networkValues = append(networkValues, "TGIF")
 			case "Other":
-				placeholders = append(placeholders, nextParam(), nextParam(), nextParam(), nextParam())
-				args = append(args, "DMR-MARC", "FreeDMR", "Other", "")
+				hasOther = true
+				networkValues = append(networkValues, "DMR-MARC", "FreeDMR", "Other")
 			}
 		}
-		if len(placeholders) > 0 {
-			query += " AND network IN (" + strings.Join(placeholders, ",") + ")"
+		if len(networkValues) > 0 {
+			p := nextParam()
+			if hasOther {
+				query += " AND (networks && " + p + "::text[] OR networks = '{}')"
+			} else {
+				query += " AND networks && " + p + "::text[]"
+			}
+			args = append(args, StringArray(networkValues))
 		}
 	}
 
@@ -147,7 +230,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 		if err := rows.Scan(&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
 			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
 			&r.ColorCode, &r.TsLinked, &r.Trustee,
-			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+			&r.IpscNetwork, &r.Networks, &r.Hotspot, &r.Status,
 			&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
 			&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
 			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
@@ -268,7 +351,7 @@ func queryAdminRepeaters(db *sql.DB, search string, page, perPage int) ([]Repeat
 			" OR city ILIKE " + p +
 			" OR state ILIKE " + p +
 			" OR country ILIKE " + p +
-			" OR network ILIKE " + p +
+			" OR array_to_string(networks, ',') ILIKE " + p +
 			" OR id::text = " + nextParam()
 		pattern := "%" + search + "%"
 		args = append(args, pattern, search)
@@ -282,7 +365,7 @@ func queryAdminRepeaters(db *sql.DB, search string, page, perPage int) ([]Repeat
 
 	offset := (page - 1) * perPage
 	query := `SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
-		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		color_code, ts_linked, trustee, ipsc_network, networks, hotspot, status,
 		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
 		import_freq_inconsistent, last_polled
 		FROM repeaters` + where + ` ORDER BY callsign LIMIT ` + nextParam() + ` OFFSET ` + nextParam()
@@ -301,7 +384,7 @@ func queryAdminRepeaters(db *sql.DB, search string, page, perPage int) ([]Repeat
 		if err := rows.Scan(&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
 			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
 			&r.ColorCode, &r.TsLinked, &r.Trustee,
-			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+			&r.IpscNetwork, &r.Networks, &r.Hotspot, &r.Status,
 			&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
 			&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
 			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
@@ -373,7 +456,7 @@ func queryRepeaterSearch(db *sql.DB, search string, limit int) ([]Repeater, int,
 		limit = 25
 	}
 	pattern := "%" + search + "%"
-	where := `WHERE callsign ILIKE $1 OR city ILIKE $1 OR state ILIKE $1 OR country ILIKE $1 OR network ILIKE $1 OR id::text = $2`
+	where := `WHERE callsign ILIKE $1 OR city ILIKE $1 OR state ILIKE $1 OR country ILIKE $1 OR array_to_string(networks, ',') ILIKE $1 OR id::text = $2`
 
 	var total int
 	err := db.QueryRow("SELECT COUNT(*) FROM repeaters "+where, pattern, search).Scan(&total)
@@ -382,7 +465,7 @@ func queryRepeaterSearch(db *sql.DB, search string, limit int) ([]Repeater, int,
 	}
 
 	rows, err := db.Query(`SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
-		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		color_code, ts_linked, trustee, ipsc_network, networks, hotspot, status,
 		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
 		import_freq_inconsistent, last_polled
 		FROM repeaters `+where+` ORDER BY callsign LIMIT $3`, pattern, search, limit)
@@ -398,7 +481,7 @@ func queryRepeaterSearch(db *sql.DB, search string, limit int) ([]Repeater, int,
 		if err := rows.Scan(&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
 			&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
 			&r.ColorCode, &r.TsLinked, &r.Trustee,
-			&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+			&r.IpscNetwork, &r.Networks, &r.Hotspot, &r.Status,
 			&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
 			&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
 			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
@@ -416,14 +499,14 @@ func queryRepeaterSearch(db *sql.DB, search string, limit int) ([]Repeater, int,
 func queryRepeaterByID(db *sql.DB, id int) (*Repeater, error) {
 	var r Repeater
 	err := db.QueryRow(`SELECT id, callsign, freq_tx, freq_rx, freq_offset, band, lat, lng, city, state, country,
-		color_code, ts_linked, trustee, ipsc_network, network, hotspot, status,
+		color_code, ts_linked, trustee, ipsc_network, networks, hotspot, status,
 		last_seen, bm_status, bm_status_text, hardware, firmware, pep, agl, website, description,
 		import_freq_inconsistent, last_polled
 		FROM repeaters WHERE id = $1`, id).Scan(
 		&r.ID, &r.Callsign, &r.FreqTx, &r.FreqRx, &r.FreqOffset, &r.Band,
 		&r.Lat, &r.Lng, &r.City, &r.State, &r.Country,
 		&r.ColorCode, &r.TsLinked, &r.Trustee,
-		&r.IpscNetwork, &r.Network, &r.Hotspot, &r.Status,
+		&r.IpscNetwork, &r.Networks, &r.Hotspot, &r.Status,
 		&r.LastSeen, &r.BmStatus, &r.BmStatusText, &r.Hardware,
 		&r.Firmware, &r.Pep, &r.Agl, &r.Website, &r.Description,
 		&r.ImportFreqInconsistent, &r.LastPolled)
@@ -440,14 +523,14 @@ func updateRepeater(db *sql.DB, r Repeater) error {
 		callsign=$2, freq_tx=$3, freq_rx=$4, freq_offset=$5, band=$6,
 		lat=$7, lng=$8, city=$9, state=$10, country=$11,
 		color_code=$12, ts_linked=$13, trustee=$14, ipsc_network=$15,
-		network=$16, hotspot=$17, status=$18,
+		networks=$16, hotspot=$17, status=$18,
 		hardware=$19, firmware=$20, pep=$21, agl=$22,
 		website=$23, description=$24
 		WHERE id=$1`,
 		r.ID, r.Callsign, r.FreqTx, r.FreqRx, r.FreqOffset, r.Band,
 		r.Lat, r.Lng, r.City, r.State, r.Country,
 		r.ColorCode, r.TsLinked, r.Trustee, r.IpscNetwork,
-		r.Network, r.Hotspot, r.Status,
+		r.Networks, r.Hotspot, r.Status,
 		r.Hardware, r.Firmware, r.Pep, r.Agl,
 		r.Website, r.Description)
 	return err
