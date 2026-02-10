@@ -423,10 +423,12 @@ html, body {
     align-items: center;
     gap: 6px;
     flex: 1;
+    min-width: 0;
 }
 
 .pin-radius-label input[type="range"] {
     flex: 1;
+    min-width: 0;
     cursor: pointer;
 }
 
@@ -436,6 +438,7 @@ html, body {
 }
 
 .pin-clear-btn {
+    flex-shrink: 0;
     background: var(--clear-btn-bg);
     color: var(--text-muted);
     border: none;
