@@ -801,6 +801,7 @@
     });
 
     map.on("click", function (e) {
+        if (isRouteMode) return;
         placePin(e.latlng);
     });
 
