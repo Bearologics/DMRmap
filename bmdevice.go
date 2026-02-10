@@ -108,6 +108,7 @@ func runBMDeviceSync(db *sql.DB) {
 			url := fmt.Sprintf("https://api.brandmeister.network/v2/device/%d", rf.ID)
 			resp, err := client.Get(url)
 			if err != nil {
+				log.Printf("BM device sync: HTTP error for %d (%s): %v", rf.ID, rf.Callsign, err)
 				mu.Lock()
 				errors++
 				mu.Unlock()
@@ -116,6 +117,7 @@ func runBMDeviceSync(db *sql.DB) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
+				log.Printf("BM device sync: HTTP %d for %d (%s)", resp.StatusCode, rf.ID, rf.Callsign)
 				mu.Lock()
 				errors++
 				mu.Unlock()
@@ -124,6 +126,7 @@ func runBMDeviceSync(db *sql.DB) {
 
 			var device bmDeviceResponse
 			if err := json.NewDecoder(resp.Body).Decode(&device); err != nil {
+				log.Printf("BM device sync: decode error for %d (%s): %v", rf.ID, rf.Callsign, err)
 				mu.Lock()
 				errors++
 				mu.Unlock()
@@ -132,6 +135,7 @@ func runBMDeviceSync(db *sql.DB) {
 
 			lastSeen, err := time.Parse("2006-01-02 15:04:05", device.LastSeen)
 			if err != nil {
+				log.Printf("BM device sync: parse last_seen error for %d (%s): %v", rf.ID, rf.Callsign, err)
 				mu.Lock()
 				errors++
 				mu.Unlock()
