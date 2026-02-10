@@ -915,6 +915,19 @@
             .then(function (data) {
                 displayRepeaters(data.repeaters);
                 showCount(data.count);
+                if (data.total === 1 && data.repeaters.length === 1) {
+                    var r = data.repeaters[0];
+                    map.setView([r.lat, r.lng], 14);
+                    setTimeout(function () {
+                        markerLayer.eachLayer(function (layer) {
+                            if (layer.getLatLng &&
+                                layer.getLatLng().lat === r.lat &&
+                                layer.getLatLng().lng === r.lng) {
+                                layer.openPopup();
+                            }
+                        });
+                    }, 600);
+                }
                 renderRepeaterList(searchListEl, data.repeaters);
                 if (data.total > data.count) {
                     var msg = document.createElement("div");
