@@ -681,7 +681,7 @@
         { key: "ts_linked", label: "Timeslots Linked", type: "text" },
         { key: "trustee", label: "Trustee", type: "text" },
         { key: "ipsc_network", label: "IPSC Network", type: "text" },
-        { key: "network", label: "Network", type: "text" },
+        { key: "network", label: "Network", type: "select", options: [{ v: "", l: "(none)" }, "Brandmeister", "DMR+", "DMR-MARC", "TGIF", "FreeDMR", "Other"] },
         { key: "hotspot", label: "Hotspot", type: "select", options: [{ v: 0, l: "No" }, { v: 1, l: "Yes" }] },
         { key: "status", label: "Status", type: "text" },
         { key: "last_seen", label: "Last Seen", type: "readonly" },
@@ -803,7 +803,7 @@
                 } else {
                     data[key] = parseInt(val, 10) || 0;
                 }
-            } else if (field.type === "select" && typeof field.options[0] === "object") {
+            } else if (field.type === "select" && typeof field.options[0] === "object" && typeof field.options[0].v === "number") {
                 data[key] = parseInt(val, 10) || 0;
             } else {
                 data[key] = val;
