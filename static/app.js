@@ -43,6 +43,9 @@
     var toInput = document.getElementById("route-to");
     var routeBtn = document.getElementById("route-btn");
     var clearBtn = document.getElementById("clear-btn");
+    var corridorRow = document.getElementById("corridor-row");
+    var corridorRange = document.getElementById("corridor-range");
+    var corridorVal = document.getElementById("corridor-val");
     var pinControlsEl = document.getElementById("pin-controls");
     var pinRadiusInput = document.getElementById("pin-radius");
     var pinClearBtn = document.getElementById("pin-clear");
@@ -87,6 +90,8 @@
             }
             acTimer = setTimeout(function () {
                 acController = new AbortController();
+                listEl.innerHTML = '<li class="ac-loading"><span class="spinner"></span>Searching...</li>';
+                listEl.classList.add("open");
                 fetch(
                     "https://nominatim.openstreetmap.org/search?" +
                         new URLSearchParams({
@@ -408,7 +413,7 @@
             body: JSON.stringify({
                 points: routePoints,
                 band: getSelectedBand(),
-                corridor: 10,
+                corridor: parseInt(corridorRange.value),
                 network: getSelectedNetworks() === "all" ? [] : getSelectedNetworks().split(","),
                 hotspots: showHotspots.checked,
                 inactive: showInactive.checked,
@@ -436,6 +441,7 @@
 
         if (isPinMode) clearPin();
         routeBtn.disabled = true;
+        routeBtn.innerHTML = '<span class="spinner"></span>Routing...';
         showStatus("Geocoding...");
 
         geocode(fromAddr)
@@ -462,6 +468,7 @@
                 routePoints = latLngs;
                 isRouteMode = true;
                 clearBtn.style.display = "";
+                corridorRow.style.display = "";
 
                 return fetchRouteRepeaters();
             })
@@ -471,6 +478,7 @@
             })
             .then(function () {
                 routeBtn.disabled = false;
+                routeBtn.textContent = "Route";
             });
     }
 
@@ -482,6 +490,7 @@
         routePoints = null;
         isRouteMode = false;
         clearBtn.style.display = "none";
+        corridorRow.style.display = "none";
         fromInput.value = "";
         toInput.value = "";
         fetchRepeaters();
@@ -735,6 +744,13 @@
         if (!pinLatLng) return;
         if (pinCircle) pinCircle.setRadius(pinRadiusInput.value * 1000);
         fetchPinRepeaters();
+    });
+
+    corridorRange.addEventListener("input", function () {
+        corridorVal.textContent = corridorRange.value;
+    });
+    corridorRange.addEventListener("change", function () {
+        if (isRouteMode) fetchRouteRepeaters();
     });
 
     routeBtn.addEventListener("click", findRoute);
