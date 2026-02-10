@@ -176,11 +176,11 @@ func handleRouteRepeaters(db *sql.DB) http.HandlerFunc {
 		}
 
 		if repeaters == nil {
-			repeaters = []Repeater{}
+			repeaters = []RepeaterWithDistance{}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(apiResponse{
+		json.NewEncoder(w).Encode(radiusResponse{
 			Repeaters: repeaters,
 			Count:     len(repeaters),
 		})

@@ -163,9 +163,9 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 }
 
 // Route corridor query: find repeaters within corridorKm of a polyline.
-func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string, showHotspots bool, showInactive bool) ([]Repeater, error) {
+func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float64, band string, networks []string, showHotspots bool, showInactive bool) ([]RepeaterWithDistance, error) {
 	if len(points) == 0 {
-		return []Repeater{}, nil
+		return []RepeaterWithDistance{}, nil
 	}
 
 	// Compute bounding box of all route points + corridor padding
@@ -199,13 +199,25 @@ func queryRepeatersAlongRoute(db *sql.DB, points [][2]float64, corridorKm float6
 		return nil, err
 	}
 
-	// Filter by distance to route segments
-	var results []Repeater
+	// Pre-compute cumulative route distances from start
+	cumDist := make([]float64, len(points))
+	for i := 1; i < len(points); i++ {
+		cumDist[i] = cumDist[i-1] + haversineKm(points[i-1][0], points[i-1][1], points[i][0], points[i][1])
+	}
+
+	// Filter by perpendicular distance to route; record along-route distance from start
+	var results []RepeaterWithDistance
 	for _, r := range candidates {
-		if minDistToRoute(r.Lat, r.Lng, points) <= corridorKm {
-			results = append(results, r)
+		perpDist, alongDist := routeDistances(r.Lat, r.Lng, points, cumDist)
+		if perpDist <= corridorKm {
+			results = append(results, RepeaterWithDistance{Repeater: r, Distance: math.Round(alongDist*10) / 10})
 		}
 	}
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Distance < results[j].Distance
+	})
+
 	return results, nil
 }
 
@@ -239,22 +251,29 @@ func queryRepeatersInRadius(db *sql.DB, lat, lng, radiusKm float64, band string,
 	return results, nil
 }
 
-func minDistToRoute(lat, lng float64, points [][2]float64) float64 {
-	best := math.Inf(1)
+// routeDistances returns the perpendicular distance from a point to the nearest
+// route segment, and the along-route distance from the route start to the
+// projection point on that segment.
+func routeDistances(lat, lng float64, points [][2]float64, cumDist []float64) (perpDist, alongDist float64) {
+	bestPerp := math.Inf(1)
+	bestAlong := 0.0
 	for i := 0; i < len(points)-1; i++ {
-		d := distToSegmentKm(lat, lng, points[i][0], points[i][1], points[i+1][0], points[i+1][1])
-		if d < best {
-			best = d
+		d, t := distToSegmentWithParam(lat, lng, points[i][0], points[i][1], points[i+1][0], points[i+1][1])
+		if d < bestPerp {
+			bestPerp = d
+			segLen := cumDist[i+1] - cumDist[i]
+			bestAlong = cumDist[i] + t*segLen
 		}
 	}
 	if len(points) == 1 {
-		best = haversineKm(lat, lng, points[0][0], points[0][1])
+		bestPerp = haversineKm(lat, lng, points[0][0], points[0][1])
 	}
-	return best
+	return bestPerp, bestAlong
 }
 
-// Approximate distance from point P to line segment AB in km.
-func distToSegmentKm(pLat, pLng, aLat, aLng, bLat, bLng float64) float64 {
+// distToSegmentWithParam returns the approximate distance from point P to line
+// segment AB in km, and the projection parameter t (0–1) along the segment.
+func distToSegmentWithParam(pLat, pLng, aLat, aLng, bLat, bLng float64) (dist, t float64) {
 	cosLat := math.Cos(pLat * math.Pi / 180)
 	// Project to approximate planar coordinates (km)
 	px := (pLng - aLng) * cosLat * 111.32
@@ -264,10 +283,10 @@ func distToSegmentKm(pLat, pLng, aLat, aLng, bLat, bLng float64) float64 {
 
 	lenSq := bx*bx + by*by
 	if lenSq == 0 {
-		return math.Sqrt(px*px + py*py)
+		return math.Sqrt(px*px + py*py), 0
 	}
 
-	t := (px*bx + py*by) / lenSq
+	t = (px*bx + py*by) / lenSq
 	if t < 0 {
 		t = 0
 	}
@@ -277,7 +296,7 @@ func distToSegmentKm(pLat, pLng, aLat, aLng, bLat, bLng float64) float64 {
 
 	dx := px - t*bx
 	dy := py - t*by
-	return math.Sqrt(dx*dx + dy*dy)
+	return math.Sqrt(dx*dx + dy*dy), t
 }
 
 func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {

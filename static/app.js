@@ -52,6 +52,7 @@
     var pinRadiusVal = document.getElementById("pin-radius-val");
     var pinClearBtn = document.getElementById("pin-clear");
     var pinListEl = document.getElementById("pin-list");
+    var routeListEl = document.getElementById("route-list");
 
     clearBtn.style.display = "none";
 
@@ -404,6 +405,7 @@
 
         if (getSelectedNetworks() === "none") {
             markerLayer.clearLayers();
+            routeListEl.innerHTML = "";
             showCount(0);
             return;
         }
@@ -427,6 +429,8 @@
             })
             .then(function (data) {
                 displayRepeaters(data.repeaters);
+                renderRepeaterList(routeListEl, data.repeaters);
+                routeListEl.style.display = "";
                 console.log("Showing " + data.count + " repeaters along route");
                 showCount(data.count);
             })
@@ -568,6 +572,8 @@
         isRouteMode = false;
         clearBtn.style.display = "none";
         corridorRow.style.display = "none";
+        routeListEl.style.display = "none";
+        routeListEl.innerHTML = "";
         fromInput.value = "";
         toInput.value = "";
         fetchRepeaters();
@@ -611,8 +617,8 @@
             });
     }
 
-    function renderPinList(repeaters) {
-        pinListEl.innerHTML = "";
+    function renderRepeaterList(container, repeaters) {
+        container.innerHTML = "";
         repeaters.forEach(function (r) {
             var item = document.createElement("div");
             item.className = "pin-list-item";
@@ -632,8 +638,12 @@
                     }
                 });
             });
-            pinListEl.appendChild(item);
+            container.appendChild(item);
         });
+    }
+
+    function renderPinList(repeaters) {
+        renderRepeaterList(pinListEl, repeaters);
     }
 
     function placePin(latlng) {
