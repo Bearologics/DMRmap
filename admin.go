@@ -10,13 +10,7 @@ import (
 
 func adminAuth(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		auth := r.Header.Get("Authorization")
-		if auth == "Bearer "+token {
-			next.ServeHTTP(w, r)
-			return
-		}
-		// For the HTML page, allow token via query param so it can be bookmarked
-		if r.URL.Query().Get("token") == token {
+		if r.Header.Get("Authorization") == "Bearer "+token {
 			next.ServeHTTP(w, r)
 			return
 		}
