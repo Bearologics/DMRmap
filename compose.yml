@@ -19,6 +19,7 @@ services:
       - BMRPTRS_PATH=/app/bmrptrs.json
       - LISTEN_ADDR=:8080
       - BM_SYNC=true
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-}
     restart: unless-stopped
 
 volumes:
