@@ -11,8 +11,8 @@
     <div id="map"></div>
     <div id="controls">
         <div class="controls-row">
-            <label class="band-label band-2m"><input type="checkbox" id="band-2m" checked> 2m</label>
-            <label class="band-label band-70cm"><input type="checkbox" id="band-70cm" checked> 70cm</label>
+            <label class="band-label band-2m"><input type="checkbox" id="band-2m" checked> <span class="band-text">VHF<span class="band-sub">2m</span></span></label>
+            <label class="band-label band-70cm"><input type="checkbox" id="band-70cm" checked> <span class="band-text">UHF<span class="band-sub">70cm</span></span></label>
             <span id="count" class="count"></span>
         </div>
         <div class="controls-row search-row">
@@ -20,14 +20,14 @@
             <button type="button" id="search-clear" class="search-clear-btn" style="display:none">&times;</button>
         </div>
         <div id="search-list" class="pin-list" style="display:none"></div>
-        <div class="controls-row network-row">
-            <label class="net-label net-bm"><input type="checkbox" id="net-bm" checked> BM</label>
-            <label class="net-label net-dmrplus"><input type="checkbox" id="net-dmrplus"> DMR+</label>
-            <label class="net-label net-tgif"><input type="checkbox" id="net-tgif"> TGIF</label>
-            <label class="net-label net-other"><input type="checkbox" id="net-other"> Other</label>
-        </div>
         <details class="advanced">
-            <summary>Advanced</summary>
+            <summary>Filters</summary>
+            <div class="controls-row network-row">
+                <label class="net-label net-bm"><input type="checkbox" id="net-bm" checked> BM</label>
+                <label class="net-label net-dmrplus"><input type="checkbox" id="net-dmrplus"> DMR+</label>
+                <label class="net-label net-tgif"><input type="checkbox" id="net-tgif"> TGIF</label>
+                <label class="net-label net-other"><input type="checkbox" id="net-other"> Other</label>
+            </div>
             <label class="hotspot-label"><input type="checkbox" id="show-hotspots"> Show personal hotspots</label>
             <label class="hotspot-label"><input type="checkbox" id="show-inactive"> Show inactive repeaters</label>
         </details>

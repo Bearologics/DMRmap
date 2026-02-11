@@ -117,6 +117,19 @@ html, body {
     user-select: none;
 }
 
+.band-text {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+
+.band-sub {
+    font-size: 9px;
+    font-weight: 400;
+    opacity: 0.45;
+    align-self: flex-end;
+}
+
 .band-2m {
     color: #1976D2;
 }
@@ -224,8 +237,8 @@ html, body {
 
 .count {
     margin-left: auto;
-    font-size: 12px;
-    color: var(--text-faint);
+    font-size: 10px;
+    color: var(--text-fainter);
     white-space: nowrap;
 }
 
