@@ -570,14 +570,16 @@ func updateRepeater(db *sql.DB, r Repeater) error {
 		color_code=$12, ts_linked=$13, trustee=$14, ipsc_network=$15,
 		networks=$16, hotspot=$17, status=$18,
 		hardware=$19, firmware=$20, pep=$21, agl=$22,
-		website=$23, description=$24
+		website=$23, description=$24,
+		last_seen=$25, bm_status=$26, bm_status_text=$27
 		WHERE id=$1`,
 		r.ID, r.Callsign, r.FreqTx, r.FreqRx, r.FreqOffset, r.Band,
 		r.Lat, r.Lng, r.City, r.State, r.Country,
 		r.ColorCode, r.TsLinked, r.Trustee, r.IpscNetwork,
 		r.Networks, r.Hotspot, r.Status,
 		r.Hardware, r.Firmware, r.Pep, r.Agl,
-		r.Website, r.Description)
+		r.Website, r.Description,
+		r.LastSeen, r.BmStatus, r.BmStatusText)
 	return err
 }
 

@@ -1156,6 +1156,16 @@
                 updateField("website", bm.website);
                 updateField("description", bm.description);
 
+                // Readonly fields are skipped by updateField for editingRepeater,
+                // so set them directly in the format Go expects for save
+                if (editingRepeater) {
+                    if (bm.last_seen) {
+                        editingRepeater.last_seen = bm.last_seen.replace(" ", "T") + "Z";
+                    }
+                    editingRepeater.bm_status = bm.status;
+                    editingRepeater.bm_status_text = bm.status_text || "";
+                }
+
                 saveStatus.textContent = "BM data loaded — review and save";
                 saveStatus.className = "save-status success";
                 fetchBmBtn.disabled = false;
