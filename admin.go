@@ -179,6 +179,60 @@ func handleAdminRepeaters(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func handleAdminSaveBMData(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		var payload struct {
+			ID           int    `json:"id"`
+			LastSeen     string `json:"last_seen"`
+			BmStatus     *int   `json:"bm_status"`
+			BmStatusText string `json:"bm_status_text"`
+			Hardware     string `json:"hardware"`
+			Firmware     string `json:"firmware"`
+			Pep          int    `json:"pep"`
+			Agl          int    `json:"agl"`
+			Website      string `json:"website"`
+			Description  string `json:"description"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+			return
+		}
+		if payload.ID <= 0 {
+			http.Error(w, `{"error":"missing id"}`, http.StatusBadRequest)
+			return
+		}
+
+		var lastSeen *time.Time
+		if payload.LastSeen != "" {
+			if t, err := time.Parse("2006-01-02 15:04:05", payload.LastSeen); err == nil {
+				lastSeen = &t
+			}
+		}
+
+		_, err := db.Exec(`UPDATE repeaters SET
+			last_seen=$1, bm_status=$2, bm_status_text=$3,
+			hardware=$4, firmware=$5, pep=$6, agl=$7,
+			website=$8, description=$9, last_polled=NOW()
+			WHERE id=$10`,
+			lastSeen, payload.BmStatus, payload.BmStatusText,
+			payload.Hardware, payload.Firmware, payload.Pep, payload.Agl,
+			payload.Website, payload.Description, payload.ID)
+		if err != nil {
+			log.Printf("Admin save BM data: update failed for %d: %v", payload.ID, err)
+			http.Error(w, `{"error":"update failed"}`, http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
+	}
+}
+
 func parseAdminFilters(q url.Values) ([]Filter, string) {
 	mode := q.Get("filter_mode")
 	if mode != "or" {

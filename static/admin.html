@@ -535,6 +535,42 @@
             cursor: pointer;
         }
         .filter-add-btn:hover { border-color: var(--text-muted); color: var(--text-muted); }
+
+        .bm-review-bar {
+            background: var(--tag-blue-bg);
+            border-bottom: 1px solid var(--border-light);
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--tag-blue-text);
+        }
+        .bm-review-bar .bm-review-text { flex: 1; }
+        .bm-review-bar button {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-bm-save {
+            background: var(--accent);
+            color: white;
+            border: none;
+        }
+        .btn-bm-save:hover { background: var(--accent-hover); }
+        .btn-bm-save:disabled { opacity: 0.5; cursor: default; }
+        .btn-bm-discard {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+        }
+        .btn-bm-discard:hover { background: var(--hover-bg); }
+
+        tr.bm-changed td { background: var(--tag-blue-bg); }
+        tr.bm-changed:hover td { background: var(--tag-blue-bg); filter: brightness(0.95); }
+        tr.bm-error td { background: var(--tag-red-bg); }
     </style>
 </head>
 <body>
@@ -553,6 +589,7 @@
         <h1>DMRmap Admin</h1>
         <input type="text" class="search-input" id="search-input" placeholder="Search callsign, city, country, network..." />
         <button class="topbar-btn" id="toggle-filters-btn">Filters</button>
+        <button class="topbar-btn" id="fetch-all-bm-btn">Fetch All BM</button>
         <span class="topbar-info" id="total-info"></span>
         <button class="logout-btn" id="logout-btn">Logout</button>
     </div>
@@ -563,6 +600,11 @@
         </div>
         <div id="filter-list" class="filter-list"></div>
         <button class="filter-add-btn" id="add-filter-btn">+ Add filter</button>
+    </div>
+    <div class="bm-review-bar" id="bm-review-bar" style="display:none">
+        <span class="bm-review-text" id="bm-review-text"></span>
+        <button class="btn-bm-save" id="bm-save-btn">Save All</button>
+        <button class="btn-bm-discard" id="bm-discard-btn">Discard</button>
     </div>
     <div class="table-wrap">
         <table>
@@ -645,6 +687,13 @@
     var filterBar = document.getElementById("filter-bar");
     var filterList = document.getElementById("filter-list");
     var addFilterBtn = document.getElementById("add-filter-btn");
+    var fetchAllBmBtn = document.getElementById("fetch-all-bm-btn");
+    var bmReviewBar = document.getElementById("bm-review-bar");
+    var bmReviewText = document.getElementById("bm-review-text");
+    var bmSaveBtn = document.getElementById("bm-save-btn");
+    var bmDiscardBtn = document.getElementById("bm-discard-btn");
+
+    var pendingBMData = {}; // keyed by repeater ID: { bmData, original }
 
     var filterDefs = {
         country:   { label: "Country",   ops: [{v:"eq",l:"is"},{v:"neq",l:"is not"},{v:"contains",l:"contains"}], hasValue: true },
@@ -807,7 +856,148 @@
         });
     });
 
+    // --- Bulk BM fetch ---
+
+    function fetchAllBMData() {
+        var bmRepeaters = currentRepeaters.filter(function (r) {
+            return r.networks && r.networks.indexOf("Brandmeister") !== -1;
+        });
+        if (!bmRepeaters.length) {
+            totalInfo.textContent = "No BrandMeister repeaters on this page";
+            return;
+        }
+
+        pendingBMData = {};
+        fetchAllBmBtn.disabled = true;
+        fetchAllBmBtn.textContent = "Fetching 0/" + bmRepeaters.length;
+
+        var idx = 0;
+        var changed = 0;
+        var errors = 0;
+        var fetched = 0;
+
+        function scheduleNext() {
+            // 5s pause after every 10 fetches, otherwise 500ms (2/sec max)
+            var delay = (fetched > 0 && fetched % 10 === 0) ? 5000 : 500;
+            if (fetched > 0 && fetched % 10 === 0) {
+                fetchAllBmBtn.textContent = "Pausing... " + idx + "/" + bmRepeaters.length;
+            }
+            setTimeout(next, delay);
+        }
+
+        function next() {
+            if (idx >= bmRepeaters.length) {
+                fetchAllBmBtn.disabled = false;
+                fetchAllBmBtn.textContent = "Fetch All BM";
+                if (changed > 0) {
+                    bmReviewText.textContent = changed + " repeater" + (changed !== 1 ? "s" : "") + " with new BM data" + (errors > 0 ? " (" + errors + " failed)" : "");
+                    bmReviewBar.style.display = "flex";
+                } else {
+                    totalInfo.textContent = "No changes found" + (errors > 0 ? " (" + errors + " failed)" : "");
+                }
+                renderTable(currentRepeaters);
+                return;
+            }
+
+            var r = bmRepeaters[idx];
+            fetchAllBmBtn.textContent = "Fetching " + (idx + 1) + "/" + bmRepeaters.length;
+
+            apiFetch("/admin/api/repeaters/bm-device?id=" + r.id)
+                .then(function (bm) {
+                    var hasChange =
+                        (bm.status_text || "") !== (r.bm_status_text || "") ||
+                        bm.status !== r.bm_status ||
+                        (bm.hardware || "") !== (r.hardware || "") ||
+                        (bm.firmware || "") !== (r.firmware || "") ||
+                        bm.pep !== r.pep ||
+                        bm.agl !== r.agl ||
+                        (bm.website || "") !== (r.website || "") ||
+                        (bm.description || "") !== (r.description || "");
+
+                    if (hasChange) {
+                        pendingBMData[r.id] = bm;
+                        changed++;
+                    }
+                    idx++;
+                    fetched++;
+                    scheduleNext();
+                })
+                .catch(function (err) {
+                    if (err.message === "unauthorized") return;
+                    errors++;
+                    idx++;
+                    fetched++;
+                    scheduleNext();
+                });
+        }
+
+        next();
+    }
+
+    function discardBMData() {
+        pendingBMData = {};
+        bmReviewBar.style.display = "none";
+        renderTable(currentRepeaters);
+    }
+
+    function saveAllBMData() {
+        var ids = Object.keys(pendingBMData);
+        if (!ids.length) return;
+
+        bmSaveBtn.disabled = true;
+        bmReviewText.textContent = "Saving 0/" + ids.length + "...";
+        var idx = 0;
+        var saved = 0;
+        var errors = 0;
+
+        function nextSave() {
+            if (idx >= ids.length) {
+                bmSaveBtn.disabled = false;
+                pendingBMData = {};
+                bmReviewBar.style.display = "none";
+                fetchRepeaters();
+                return;
+            }
+
+            var id = parseInt(ids[idx]);
+            var bm = pendingBMData[id];
+            bmReviewText.textContent = "Saving " + (idx + 1) + "/" + ids.length + "...";
+
+            apiFetch("/admin/api/repeaters/save-bm", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: id,
+                    last_seen: bm.last_seen || "",
+                    bm_status: bm.status,
+                    bm_status_text: bm.status_text || "",
+                    hardware: bm.hardware || "",
+                    firmware: bm.firmware || "",
+                    pep: bm.pep || 0,
+                    agl: bm.agl || 0,
+                    website: bm.website || "",
+                    description: bm.description || ""
+                })
+            })
+            .then(function () { saved++; idx++; nextSave(); })
+            .catch(function (err) {
+                if (err.message === "unauthorized") return;
+                errors++;
+                idx++;
+                nextSave();
+            });
+        }
+
+        nextSave();
+    }
+
+    fetchAllBmBtn.addEventListener("click", fetchAllBMData);
+    bmSaveBtn.addEventListener("click", saveAllBMData);
+    bmDiscardBtn.addEventListener("click", discardBMData);
+
     function fetchRepeaters() {
+        pendingBMData = {};
+        bmReviewBar.style.display = "none";
         loadingEl.style.display = "";
         emptyState.style.display = "none";
         tableBody.innerHTML = "";
@@ -851,6 +1041,9 @@
 
         repeaters.forEach(function (r, idx) {
             var tr = document.createElement("tr");
+            var bm = pendingBMData[r.id];
+            if (bm) tr.className = "bm-changed";
+
             var bandTag = r.band === "2m"
                 ? '<span class="tag tag-2m">2m</span>'
                 : '<span class="tag tag-70cm">70cm</span>';
@@ -859,7 +1052,9 @@
                 ? '<span class="tag tag-inactive">Inactive</span>'
                 : '<span class="tag tag-active">' + escapeHtml(r.status) + '</span>';
 
-            var bmStatus = r.bm_status_text || (r.bm_status !== null ? "Code " + r.bm_status : "");
+            var bmStatusVal = bm ? bm.status_text || (bm.status !== null ? "Code " + bm.status : "") : r.bm_status_text || (r.bm_status !== null ? "Code " + r.bm_status : "");
+            var lastSeenVal = bm ? bm.last_seen : r.last_seen;
+            var hardwareVal = bm ? bm.hardware : r.hardware;
 
             tr.innerHTML =
                 '<td>' + r.id + '</td>' +
@@ -875,9 +1070,9 @@
                 '<td>' + escapeHtml(r.country) + '</td>' +
                 '<td>' + statusTag + '</td>' +
                 '<td>' + escapeHtml(r.ts_linked) + '</td>' +
-                '<td>' + formatDate(r.last_seen) + '</td>' +
-                '<td>' + escapeHtml(bmStatus) + '</td>' +
-                '<td>' + escapeHtml(r.hardware) + '</td>' +
+                '<td>' + formatDate(lastSeenVal) + '</td>' +
+                '<td>' + escapeHtml(bmStatusVal) + '</td>' +
+                '<td>' + escapeHtml(hardwareVal || '') + '</td>' +
                 '<td>' + formatDate(r.last_polled) + '</td>';
 
             tr.addEventListener("click", function () {
