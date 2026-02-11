@@ -213,7 +213,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 
 	if !showInactive {
 		threshold := time.Now().Add(-7 * 24 * time.Hour)
-		query += " AND (last_seen IS NULL OR last_seen >= " + nextParam() + ")"
+		query += " AND (last_seen IS NULL OR last_seen >= " + nextParam() + ") AND (bm_status IS NULL OR bm_status != 0)"
 		args = append(args, threshold)
 	}
 
@@ -236,7 +236,7 @@ func queryRepeaters(db *sql.DB, minLat, maxLat, minLng, maxLng float64, band str
 			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
 			return nil, err
 		}
-		r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
+		r.Inactive = (r.LastSeen != nil && r.LastSeen.Before(threshold)) || (r.BmStatus != nil && *r.BmStatus == 0)
 		results = append(results, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -390,7 +390,7 @@ func queryAdminRepeaters(db *sql.DB, search string, page, perPage int) ([]Repeat
 			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
 			return nil, 0, err
 		}
-		r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
+		r.Inactive = (r.LastSeen != nil && r.LastSeen.Before(threshold)) || (r.BmStatus != nil && *r.BmStatus == 0)
 		results = append(results, r)
 	}
 	if err := rows.Err(); err != nil {
@@ -487,7 +487,7 @@ func queryRepeaterSearch(db *sql.DB, search string, limit int) ([]Repeater, int,
 			&r.ImportFreqInconsistent, &r.LastPolled); err != nil {
 			return nil, 0, err
 		}
-		r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
+		r.Inactive = (r.LastSeen != nil && r.LastSeen.Before(threshold)) || (r.BmStatus != nil && *r.BmStatus == 0)
 		results = append(results, r)
 	}
 	if results == nil {
@@ -514,7 +514,7 @@ func queryRepeaterByID(db *sql.DB, id int) (*Repeater, error) {
 		return nil, err
 	}
 	threshold := time.Now().Add(-7 * 24 * time.Hour)
-	r.Inactive = r.LastSeen != nil && r.LastSeen.Before(threshold)
+	r.Inactive = (r.LastSeen != nil && r.LastSeen.Before(threshold)) || (r.BmStatus != nil && *r.BmStatus == 0)
 	return &r, nil
 }
 
