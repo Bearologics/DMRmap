@@ -187,16 +187,17 @@ func handleAdminSaveBMData(db *sql.DB) http.HandlerFunc {
 		}
 
 		var payload struct {
-			ID           int    `json:"id"`
-			LastSeen     string `json:"last_seen"`
-			BmStatus     *int   `json:"bm_status"`
-			BmStatusText string `json:"bm_status_text"`
-			Hardware     string `json:"hardware"`
-			Firmware     string `json:"firmware"`
-			Pep          int    `json:"pep"`
-			Agl          int    `json:"agl"`
-			Website      string `json:"website"`
-			Description  string `json:"description"`
+			ID              int    `json:"id"`
+			LastSeen        string `json:"last_seen"`
+			BmStatus        *int   `json:"bm_status"`
+			BmStatusText    string `json:"bm_status_text"`
+			Hardware        string `json:"hardware"`
+			Firmware        string `json:"firmware"`
+			Pep             int    `json:"pep"`
+			Agl             int    `json:"agl"`
+			Website         string `json:"website"`
+			Description     string `json:"description"`
+			LastKnownMaster int    `json:"last_known_master"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
@@ -224,6 +225,42 @@ func handleAdminSaveBMData(db *sql.DB) http.HandlerFunc {
 			payload.Website, payload.Description, payload.ID)
 		if err != nil {
 			log.Printf("Admin save BM data: update failed for %d: %v", payload.ID, err)
+			http.Error(w, `{"error":"update failed"}`, http.StatusInternalServerError)
+			return
+		}
+
+		// Add Brandmeister tag if valid master server
+		if payload.LastKnownMaster != 0 && payload.LastKnownMaster != 9999 {
+			db.Exec(`UPDATE repeaters SET networks = array_append(networks, 'Brandmeister')
+				WHERE id = $1 AND NOT networks @> ARRAY['Brandmeister']`, payload.ID)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
+	}
+}
+
+func handleAdminRemoveBMTag(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		var payload struct {
+			ID int `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+			return
+		}
+		if payload.ID <= 0 {
+			http.Error(w, `{"error":"missing id"}`, http.StatusBadRequest)
+			return
+		}
+
+		_, err := db.Exec(`UPDATE repeaters SET networks = array_remove(networks, 'Brandmeister'), last_polled=NOW() WHERE id = $1`, payload.ID)
+		if err != nil {
 			http.Error(w, `{"error":"update failed"}`, http.StatusInternalServerError)
 			return
 		}

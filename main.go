@@ -46,6 +46,7 @@ func main() {
 		adminAPI.HandleFunc("/admin/api/repeaters/update", handleAdminUpdateRepeater(db))
 		adminAPI.HandleFunc("/admin/api/repeaters/bm-device", handleBMDevice())
 		adminAPI.HandleFunc("/admin/api/repeaters/save-bm", handleAdminSaveBMData(db))
+		adminAPI.HandleFunc("/admin/api/repeaters/remove-bm-tag", handleAdminRemoveBMTag(db))
 		mux.Handle("/admin/api/", adminAuth(adminToken, adminAPI))
 		log.Println("Admin interface enabled at /admin/")
 	}

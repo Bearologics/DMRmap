@@ -859,17 +859,15 @@
     // --- Bulk BM fetch ---
 
     function fetchAllBMData() {
-        var bmRepeaters = currentRepeaters.filter(function (r) {
-            return r.networks && r.networks.indexOf("Brandmeister") !== -1;
-        });
-        if (!bmRepeaters.length) {
-            totalInfo.textContent = "No BrandMeister repeaters on this page";
+        if (!currentRepeaters.length) {
+            totalInfo.textContent = "No repeaters on this page";
             return;
         }
 
+        var allRepeaters = currentRepeaters;
         pendingBMData = {};
         fetchAllBmBtn.disabled = true;
-        fetchAllBmBtn.textContent = "Fetching 0/" + bmRepeaters.length;
+        fetchAllBmBtn.textContent = "Fetching 0/" + allRepeaters.length;
 
         var idx = 0;
         var changed = 0;
@@ -880,13 +878,13 @@
             // 5s pause after every 10 fetches, otherwise 500ms (2/sec max)
             var delay = (fetched > 0 && fetched % 10 === 0) ? 5000 : 500;
             if (fetched > 0 && fetched % 10 === 0) {
-                fetchAllBmBtn.textContent = "Pausing... " + idx + "/" + bmRepeaters.length;
+                fetchAllBmBtn.textContent = "Pausing... " + idx + "/" + allRepeaters.length;
             }
             setTimeout(next, delay);
         }
 
         function next() {
-            if (idx >= bmRepeaters.length) {
+            if (idx >= allRepeaters.length) {
                 fetchAllBmBtn.disabled = false;
                 fetchAllBmBtn.textContent = "Fetch All BM";
                 if (changed > 0) {
@@ -899,8 +897,8 @@
                 return;
             }
 
-            var r = bmRepeaters[idx];
-            fetchAllBmBtn.textContent = "Fetching " + (idx + 1) + "/" + bmRepeaters.length;
+            var r = allRepeaters[idx];
+            fetchAllBmBtn.textContent = "Fetching " + (idx + 1) + "/" + allRepeaters.length;
 
             apiFetch("/admin/api/repeaters/bm-device?id=" + r.id)
                 .then(function (bm) {
@@ -914,6 +912,13 @@
                         (bm.website || "") !== (r.website || "") ||
                         (bm.description || "") !== (r.description || "");
 
+                    // If valid BM master and repeater lacks Brandmeister tag, mark as changed
+                    var validMaster = bm.last_known_master && bm.last_known_master !== 0 && bm.last_known_master !== 9999;
+                    if (validMaster && (!r.networks || r.networks.indexOf("Brandmeister") === -1)) {
+                        hasChange = true;
+                        bm._add_bm_tag = true;
+                    }
+
                     if (hasChange) {
                         pendingBMData[r.id] = bm;
                         changed++;
@@ -924,7 +929,15 @@
                 })
                 .catch(function (err) {
                     if (err.message === "unauthorized") return;
-                    errors++;
+                    if (err.message === "HTTP 404") {
+                        // Not on BrandMeister — if it has the tag, mark for removal
+                        if (r.networks && r.networks.indexOf("Brandmeister") !== -1) {
+                            pendingBMData[r.id] = { _remove_bm_tag: true };
+                            changed++;
+                        }
+                    } else {
+                        errors++;
+                    }
                     idx++;
                     fetched++;
                     scheduleNext();
@@ -963,23 +976,33 @@
             var bm = pendingBMData[id];
             bmReviewText.textContent = "Saving " + (idx + 1) + "/" + ids.length + "...";
 
-            apiFetch("/admin/api/repeaters/save-bm", {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    id: id,
-                    last_seen: bm.last_seen || "",
-                    bm_status: bm.status,
-                    bm_status_text: bm.status_text || "",
-                    hardware: bm.hardware || "",
-                    firmware: bm.firmware || "",
-                    pep: bm.pep || 0,
-                    agl: bm.agl || 0,
-                    website: bm.website || "",
-                    description: bm.description || ""
-                })
-            })
-            .then(function () { saved++; idx++; nextSave(); })
+            var req;
+            if (bm._remove_bm_tag) {
+                req = apiFetch("/admin/api/repeaters/remove-bm-tag", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ id: id })
+                });
+            } else {
+                req = apiFetch("/admin/api/repeaters/save-bm", {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id: id,
+                        last_seen: bm.last_seen || "",
+                        bm_status: bm.status,
+                        bm_status_text: bm.status_text || "",
+                        hardware: bm.hardware || "",
+                        firmware: bm.firmware || "",
+                        pep: bm.pep || 0,
+                        agl: bm.agl || 0,
+                        website: bm.website || "",
+                        description: bm.description || "",
+                        last_known_master: bm.last_known_master || 0
+                    })
+                });
+            }
+            req.then(function () { saved++; idx++; nextSave(); })
             .catch(function (err) {
                 if (err.message === "unauthorized") return;
                 errors++;
@@ -1042,7 +1065,11 @@
         repeaters.forEach(function (r, idx) {
             var tr = document.createElement("tr");
             var bm = pendingBMData[r.id];
-            if (bm) tr.className = "bm-changed";
+            if (bm && bm._remove_bm_tag) {
+                tr.className = "bm-error";
+            } else if (bm) {
+                tr.className = "bm-changed";
+            }
 
             var bandTag = r.band === "2m"
                 ? '<span class="tag tag-2m">2m</span>'
@@ -1052,9 +1079,9 @@
                 ? '<span class="tag tag-inactive">Inactive</span>'
                 : '<span class="tag tag-active">' + escapeHtml(r.status) + '</span>';
 
-            var bmStatusVal = bm ? bm.status_text || (bm.status !== null ? "Code " + bm.status : "") : r.bm_status_text || (r.bm_status !== null ? "Code " + r.bm_status : "");
-            var lastSeenVal = bm ? bm.last_seen : r.last_seen;
-            var hardwareVal = bm ? bm.hardware : r.hardware;
+            var bmStatusVal = (bm && !bm._remove_bm_tag) ? bm.status_text || (bm.status !== null ? "Code " + bm.status : "") : r.bm_status_text || (r.bm_status !== null ? "Code " + r.bm_status : "");
+            var lastSeenVal = (bm && !bm._remove_bm_tag) ? bm.last_seen : r.last_seen;
+            var hardwareVal = (bm && !bm._remove_bm_tag) ? bm.hardware : r.hardware;
 
             tr.innerHTML =
                 '<td>' + r.id + '</td>' +
@@ -1359,6 +1386,21 @@
                     }
                     editingRepeater.bm_status = bm.status;
                     editingRepeater.bm_status_text = bm.status_text || "";
+
+                    // Auto-add Brandmeister tag if valid master
+                    var validMaster = bm.last_known_master && bm.last_known_master !== 0 && bm.last_known_master !== 9999;
+                    if (validMaster && (!editingRepeater.networks || editingRepeater.networks.indexOf("Brandmeister") === -1)) {
+                        if (!editingRepeater.networks) editingRepeater.networks = [];
+                        editingRepeater.networks.push("Brandmeister");
+                        // Check the Brandmeister checkbox in the form
+                        var netGroup = detailBody.querySelector('[data-key="networks"]');
+                        if (netGroup) {
+                            var cbs = netGroup.querySelectorAll('input[type="checkbox"]');
+                            for (var ci = 0; ci < cbs.length; ci++) {
+                                if (cbs[ci].value === "Brandmeister") cbs[ci].checked = true;
+                            }
+                        }
+                    }
                 }
 
                 saveStatus.textContent = "BM data loaded — review and save";
