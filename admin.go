@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -160,8 +161,9 @@ func handleAdminRepeaters(db *sql.DB) http.HandlerFunc {
 		}
 
 		search := strings.TrimSpace(q.Get("q"))
+		filters, filterMode := parseAdminFilters(q)
 
-		repeaters, total, err := queryAdminRepeaters(db, search, page, perPage)
+		repeaters, total, err := queryAdminRepeaters(db, search, page, perPage, filters, filterMode)
 		if err != nil {
 			http.Error(w, `{"error":"database query failed"}`, http.StatusInternalServerError)
 			return
@@ -175,4 +177,18 @@ func handleAdminRepeaters(db *sql.DB) http.HandlerFunc {
 			PerPage:   perPage,
 		})
 	}
+}
+
+func parseAdminFilters(q url.Values) ([]Filter, string) {
+	mode := q.Get("filter_mode")
+	if mode != "or" {
+		mode = "and"
+	}
+	raw := q.Get("filters")
+	if raw == "" {
+		return nil, mode
+	}
+	var filters []Filter
+	json.Unmarshal([]byte(raw), &filters)
+	return filters, mode
 }

@@ -451,6 +451,90 @@
             font-size: 13px; cursor: pointer; color: var(--text);
         }
         .multicheck-label input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+        .topbar-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: var(--bg);
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .topbar-btn:hover { background: var(--hover-bg); }
+        .topbar-btn.active { background: var(--tag-blue-bg); color: var(--tag-blue-text); border-color: var(--tag-blue-text); }
+
+        .filter-bar {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border-light);
+            padding: 10px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .filter-mode-toggle { display: flex; gap: 0; }
+        .filter-mode-btn {
+            padding: 4px 10px;
+            border: 1px solid var(--border);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            background: var(--bg);
+            cursor: pointer;
+        }
+        .filter-mode-btn:first-child { border-radius: 4px 0 0 4px; }
+        .filter-mode-btn:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+        .filter-mode-btn.active { background: var(--tag-blue-bg); color: var(--tag-blue-text); border-color: var(--tag-blue-text); }
+
+        .filter-list { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+        .filter-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 4px 6px;
+        }
+
+        .filter-select, .filter-input {
+            padding: 4px 8px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 12px;
+            background: var(--input-bg);
+            color: var(--text);
+            outline: none;
+        }
+        .filter-select:focus, .filter-input:focus { border-color: var(--accent); }
+        .filter-input { width: 120px; }
+
+        .filter-remove-btn {
+            background: none;
+            border: none;
+            font-size: 16px;
+            color: var(--text-faint);
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        .filter-remove-btn:hover { color: var(--danger); }
+
+        .filter-add-btn {
+            padding: 4px 10px;
+            border: 1px dashed var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-faint);
+            background: none;
+            cursor: pointer;
+        }
+        .filter-add-btn:hover { border-color: var(--text-muted); color: var(--text-muted); }
     </style>
 </head>
 <body>
@@ -468,8 +552,17 @@
     <div class="topbar">
         <h1>DMRmap Admin</h1>
         <input type="text" class="search-input" id="search-input" placeholder="Search callsign, city, country, network..." />
+        <button class="topbar-btn" id="toggle-filters-btn">Filters</button>
         <span class="topbar-info" id="total-info"></span>
         <button class="logout-btn" id="logout-btn">Logout</button>
+    </div>
+    <div class="filter-bar" id="filter-bar" style="display:none">
+        <div class="filter-mode-toggle">
+            <button class="filter-mode-btn active" data-mode="and">AND</button>
+            <button class="filter-mode-btn" data-mode="or">OR</button>
+        </div>
+        <div id="filter-list" class="filter-list"></div>
+        <button class="filter-add-btn" id="add-filter-btn">+ Add filter</button>
     </div>
     <div class="table-wrap">
         <table>
@@ -548,6 +641,16 @@
     var nextBtn = document.getElementById("next-btn");
     var pageInfo = document.getElementById("page-info");
 
+    var toggleFiltersBtn = document.getElementById("toggle-filters-btn");
+    var filterBar = document.getElementById("filter-bar");
+    var filterList = document.getElementById("filter-list");
+    var addFilterBtn = document.getElementById("add-filter-btn");
+
+    var filterDefs = {
+        country:   { label: "Country",   ops: [{v:"eq",l:"is"},{v:"neq",l:"is not"},{v:"contains",l:"contains"}], hasValue: true },
+        bm_status: { label: "BM Status", ops: [{v:"empty",l:"is empty"},{v:"not_empty",l:"is not empty"}], hasValue: false }
+    };
+
     var detailOverlay = document.getElementById("detail-overlay");
     var detailPanel = document.getElementById("detail-panel");
     var detailTitle = document.getElementById("detail-title");
@@ -597,6 +700,113 @@
         });
     }
 
+    function addFilterRow() {
+        var row = document.createElement("div");
+        row.className = "filter-row";
+
+        var fieldKeys = Object.keys(filterDefs);
+        var fieldSel = document.createElement("select");
+        fieldSel.className = "filter-select";
+        for (var i = 0; i < fieldKeys.length; i++) {
+            var opt = document.createElement("option");
+            opt.value = fieldKeys[i];
+            opt.textContent = filterDefs[fieldKeys[i]].label;
+            fieldSel.appendChild(opt);
+        }
+
+        var opSel = document.createElement("select");
+        opSel.className = "filter-select";
+
+        var valInput = document.createElement("input");
+        valInput.type = "text";
+        valInput.className = "filter-input";
+        valInput.placeholder = "Value...";
+
+        var removeBtn = document.createElement("button");
+        removeBtn.className = "filter-remove-btn";
+        removeBtn.innerHTML = "&times;";
+
+        function updateOps() {
+            var def = filterDefs[fieldSel.value];
+            opSel.innerHTML = "";
+            for (var i = 0; i < def.ops.length; i++) {
+                var opt = document.createElement("option");
+                opt.value = def.ops[i].v;
+                opt.textContent = def.ops[i].l;
+                opSel.appendChild(opt);
+            }
+            valInput.style.display = def.hasValue ? "" : "none";
+            valInput.value = "";
+        }
+
+        updateOps();
+
+        fieldSel.addEventListener("change", function () {
+            updateOps();
+            onFilterChange();
+        });
+        opSel.addEventListener("change", onFilterChange);
+        valInput.addEventListener("input", function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(onFilterChange, 300);
+        });
+        removeBtn.addEventListener("click", function () {
+            row.remove();
+            onFilterChange();
+        });
+
+        row.appendChild(fieldSel);
+        row.appendChild(opSel);
+        row.appendChild(valInput);
+        row.appendChild(removeBtn);
+        filterList.appendChild(row);
+    }
+
+    function getActiveFilters() {
+        var rows = filterList.querySelectorAll(".filter-row");
+        if (!rows.length) return null;
+        var filters = [];
+        for (var i = 0; i < rows.length; i++) {
+            var fieldSel = rows[i].querySelector("select:first-child");
+            var opSel = rows[i].querySelectorAll("select")[1];
+            var valInput = rows[i].querySelector(".filter-input");
+            var def = filterDefs[fieldSel.value];
+            if (def.hasValue && !valInput.value.trim()) continue;
+            filters.push({
+                field: fieldSel.value,
+                op: opSel.value,
+                value: def.hasValue ? valInput.value.trim() : ""
+            });
+        }
+        if (!filters.length) return null;
+        var modeBtn = document.querySelector(".filter-mode-btn.active");
+        var mode = modeBtn ? modeBtn.getAttribute("data-mode") : "and";
+        return { filters: filters, mode: mode };
+    }
+
+    function onFilterChange() {
+        currentPage = 1;
+        fetchRepeaters();
+    }
+
+    toggleFiltersBtn.addEventListener("click", function () {
+        var visible = filterBar.style.display !== "none";
+        filterBar.style.display = visible ? "none" : "flex";
+        toggleFiltersBtn.classList.toggle("active", !visible);
+    });
+
+    addFilterBtn.addEventListener("click", function () {
+        addFilterRow();
+    });
+
+    document.querySelectorAll(".filter-mode-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            document.querySelectorAll(".filter-mode-btn").forEach(function (b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+            onFilterChange();
+        });
+    });
+
     function fetchRepeaters() {
         loadingEl.style.display = "";
         emptyState.style.display = "none";
@@ -608,6 +818,12 @@
             per_page: perPage
         });
         if (q) params.set("q", q);
+
+        var filterData = getActiveFilters();
+        if (filterData) {
+            params.set("filters", JSON.stringify(filterData.filters));
+            params.set("filter_mode", filterData.mode);
+        }
 
         apiFetch("/admin/api/repeaters?" + params)
             .then(function (data) {

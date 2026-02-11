@@ -124,6 +124,12 @@ type Repeater struct {
 	LastPolled             *time.Time `json:"last_polled"`
 }
 
+type Filter struct {
+	Field string `json:"field"`
+	Op    string `json:"op"`
+	Value string `json:"value"`
+}
+
 func openDB(dsn string) (*sql.DB, error) {
 	var db *sql.DB
 	var err error
@@ -336,7 +342,7 @@ func queryRepeatersInRadius(db *sql.DB, lat, lng, radiusKm float64, band string,
 }
 
 // Admin query: paginated list of all repeaters with optional search.
-func queryAdminRepeaters(db *sql.DB, search string, page, perPage int) ([]Repeater, int, error) {
+func queryAdminRepeaters(db *sql.DB, search string, page, perPage int, filters []Filter, filterMode string) ([]Repeater, int, error) {
 	paramIdx := 0
 	nextParam := func() string {
 		paramIdx++
@@ -347,14 +353,53 @@ func queryAdminRepeaters(db *sql.DB, search string, page, perPage int) ([]Repeat
 	var args []interface{}
 	if search != "" {
 		p := nextParam()
-		where = " WHERE callsign ILIKE " + p +
+		where = " WHERE (callsign ILIKE " + p +
 			" OR city ILIKE " + p +
 			" OR state ILIKE " + p +
 			" OR country ILIKE " + p +
 			" OR array_to_string(networks, ',') ILIKE " + p +
-			" OR id::text = " + nextParam()
+			" OR id::text = " + nextParam() + ")"
 		pattern := "%" + search + "%"
 		args = append(args, pattern, search)
+	}
+
+	if len(filters) > 0 {
+		var clauses []string
+		for _, f := range filters {
+			switch f.Field {
+			case "country":
+				switch f.Op {
+				case "eq":
+					clauses = append(clauses, "country = "+nextParam())
+					args = append(args, f.Value)
+				case "neq":
+					clauses = append(clauses, "country != "+nextParam())
+					args = append(args, f.Value)
+				case "contains":
+					clauses = append(clauses, "country ILIKE "+nextParam())
+					args = append(args, "%"+f.Value+"%")
+				}
+			case "bm_status":
+				switch f.Op {
+				case "empty":
+					clauses = append(clauses, "bm_status IS NULL")
+				case "not_empty":
+					clauses = append(clauses, "bm_status IS NOT NULL")
+				}
+			}
+		}
+		if len(clauses) > 0 {
+			joiner := " AND "
+			if filterMode == "or" {
+				joiner = " OR "
+			}
+			filterExpr := "(" + strings.Join(clauses, joiner) + ")"
+			if where == "" {
+				where = " WHERE " + filterExpr
+			} else {
+				where += " AND " + filterExpr
+			}
+		}
 	}
 
 	var total int
