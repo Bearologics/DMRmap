@@ -423,6 +423,19 @@
 
         .btn-cancel:hover { background: var(--hover-bg); }
 
+        .btn-fetch-bm {
+            padding: 8px 20px;
+            background: none;
+            border: 1px solid var(--tag-blue-text);
+            border-radius: 6px;
+            font-size: 13px;
+            color: var(--tag-blue-text);
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-fetch-bm:hover { background: var(--tag-blue-bg); }
+        .btn-fetch-bm:disabled { opacity: 0.5; cursor: default; }
+
         .save-status {
             font-size: 12px;
             align-self: center;
@@ -502,6 +515,7 @@
     <div class="detail-body" id="detail-body"></div>
     <div class="detail-footer">
         <span class="save-status" id="save-status"></span>
+        <button class="btn-fetch-bm" id="fetch-bm-btn">Fetch BM</button>
         <button class="btn-cancel" id="detail-cancel">Cancel</button>
         <button class="btn-save" id="detail-save">Save</button>
     </div>
@@ -542,6 +556,7 @@
     var detailCancel = document.getElementById("detail-cancel");
     var detailSave = document.getElementById("detail-save");
     var saveStatus = document.getElementById("save-status");
+    var fetchBmBtn = document.getElementById("fetch-bm-btn");
 
     function escapeHtml(s) {
         if (!s) return "";
@@ -861,10 +876,89 @@
         });
     }
 
+    function updateField(key, value) {
+        // Find the field definition
+        var field = null;
+        for (var j = 0; j < fields.length; j++) {
+            if (fields[j].key === key) { field = fields[j]; break; }
+        }
+        if (!field) return;
+
+        // Only update editingRepeater for editable fields (readonly values like
+        // last_seen use non-RFC3339 formats that break Go's JSON decoder on save)
+        if (field.type !== "readonly" && editingRepeater) editingRepeater[key] = value;
+
+        if (field.type === "readonly") {
+            // Find the label that matches and update the sibling readonly-value
+            var labels = detailBody.querySelectorAll("label");
+            for (var i = 0; i < labels.length; i++) {
+                if (labels[i].textContent === field.label) {
+                    var rdv = labels[i].parentNode.querySelector(".readonly-value");
+                    if (rdv) {
+                        var display = value;
+                        if (key === "last_seen" || key === "last_polled") display = formatDate(String(value));
+                        if (key === "import_freq_inconsistent") display = value ? "Yes" : "No";
+                        if (key === "bm_status") display = value !== "" && value !== null ? String(value) : "N/A";
+                        rdv.textContent = String(display || "N/A");
+                    }
+                    break;
+                }
+            }
+        } else if (field.type === "multicheck") {
+            var group = detailBody.querySelector('[data-key="' + key + '"]');
+            if (group) {
+                var cbs = group.querySelectorAll('input[type="checkbox"]');
+                var vals = value || [];
+                for (var i = 0; i < cbs.length; i++) {
+                    cbs[i].checked = vals.indexOf(cbs[i].value) !== -1;
+                }
+            }
+        } else {
+            var el = detailBody.querySelector('[data-key="' + key + '"]');
+            if (el) el.value = value != null ? value : "";
+        }
+    }
+
+    function fetchBMData() {
+        if (!editingRepeater) return;
+        var id = editingRepeater.id;
+
+        fetchBmBtn.disabled = true;
+        fetchBmBtn.textContent = "Fetching...";
+        saveStatus.textContent = "";
+        saveStatus.className = "save-status";
+
+        apiFetch("/admin/api/repeaters/bm-device?id=" + id)
+            .then(function (bm) {
+                updateField("last_seen", bm.last_seen);
+                updateField("bm_status", bm.status);
+                updateField("bm_status_text", bm.status_text);
+                updateField("hardware", bm.hardware);
+                updateField("firmware", bm.firmware);
+                updateField("pep", bm.pep);
+                updateField("agl", bm.agl);
+                updateField("website", bm.website);
+                updateField("description", bm.description);
+
+                saveStatus.textContent = "BM data loaded — review and save";
+                saveStatus.className = "save-status success";
+                fetchBmBtn.disabled = false;
+                fetchBmBtn.textContent = "Fetch BM";
+            })
+            .catch(function (err) {
+                if (err.message === "unauthorized") return;
+                saveStatus.textContent = "Failed to fetch BM data";
+                saveStatus.className = "save-status error";
+                fetchBmBtn.disabled = false;
+                fetchBmBtn.textContent = "Fetch BM";
+            });
+    }
+
     detailClose.addEventListener("click", closeDetail);
     detailCancel.addEventListener("click", closeDetail);
     detailOverlay.addEventListener("click", closeDetail);
     detailSave.addEventListener("click", saveDetail);
+    fetchBmBtn.addEventListener("click", fetchBMData);
 
     document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && detailPanel.classList.contains("open")) {

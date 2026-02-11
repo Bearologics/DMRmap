@@ -3,9 +3,12 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func adminAuth(token string, next http.Handler) http.Handler {
@@ -57,6 +60,77 @@ func handleAdminUpdateRepeater(db *sql.DB) http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"ok":true}`))
+	}
+}
+
+func handleBMDevice() http.HandlerFunc {
+	client := &http.Client{Timeout: 15 * time.Second}
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, `{"error":"method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+		id := r.URL.Query().Get("id")
+		if id == "" {
+			http.Error(w, `{"error":"missing id"}`, http.StatusBadRequest)
+			return
+		}
+		if _, err := strconv.Atoi(id); err != nil {
+			http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+			return
+		}
+
+		url := fmt.Sprintf("https://api.brandmeister.network/v2/device/%s", id)
+		resp, err := client.Get(url)
+		if err != nil {
+			log.Printf("BM device proxy: HTTP error for %s: %v", id, err)
+			http.Error(w, `{"error":"upstream request failed"}`, http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode == http.StatusNotFound {
+			http.Error(w, `{"error":"device not found on BrandMeister"}`, http.StatusNotFound)
+			return
+		}
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("BM device proxy: HTTP %d for %s", resp.StatusCode, id)
+			http.Error(w, `{"error":"upstream error"}`, http.StatusBadGateway)
+			return
+		}
+
+		var device bmDeviceResponse
+		if err := json.NewDecoder(resp.Body).Decode(&device); err != nil {
+			log.Printf("BM device proxy: decode error for %s: %v", id, err)
+			http.Error(w, `{"error":"decode error"}`, http.StatusBadGateway)
+			return
+		}
+
+		desc := device.Description
+		if device.PriorityDescription != "" {
+			if desc != "" {
+				desc = device.PriorityDescription + "\n" + desc
+			} else {
+				desc = device.PriorityDescription
+			}
+		}
+		desc = stripHTML(desc)
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"last_seen":      device.LastSeen,
+			"status":         device.Status,
+			"status_text":    device.StatusText,
+			"hardware":       device.Hardware,
+			"firmware":       device.Firmware,
+			"pep":            device.Pep,
+			"agl":            device.Agl,
+			"website":        device.Website,
+			"description":    desc,
+			"tx":             device.Tx,
+			"rx":             device.Rx,
+			"last_known_master": device.LastKnownMaster,
+		})
 	}
 }
 

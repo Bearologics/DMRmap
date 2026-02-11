@@ -44,6 +44,7 @@ func main() {
 		adminAPI := http.NewServeMux()
 		adminAPI.HandleFunc("/admin/api/repeaters", handleAdminRepeaters(db))
 		adminAPI.HandleFunc("/admin/api/repeaters/update", handleAdminUpdateRepeater(db))
+		adminAPI.HandleFunc("/admin/api/repeaters/bm-device", handleBMDevice())
 		mux.Handle("/admin/api/", adminAuth(adminToken, adminAPI))
 		log.Println("Admin interface enabled at /admin/")
 	}
