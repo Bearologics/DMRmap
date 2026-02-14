@@ -16,39 +16,39 @@
             <span id="count" class="count"></span>
         </div>
         <div class="controls-row search-row">
-            <input type="text" id="search-input" placeholder="Search callsign, city, ID..." autocomplete="off" />
+            <input type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="Search callsign, city, ID..." autocomplete="off" />
             <button type="button" id="search-clear" class="search-clear-btn" style="display:none">&times;</button>
         </div>
         <div id="search-list" class="pin-list" style="display:none"></div>
         <details class="advanced">
-            <summary>Filters</summary>
+            <summary data-i18n="filters">Filters</summary>
             <div class="controls-row network-row">
                 <label class="net-label net-bm"><input type="checkbox" id="net-bm" checked> BM</label>
                 <label class="net-label net-dmrplus"><input type="checkbox" id="net-dmrplus"> DMR+</label>
                 <label class="net-label net-tgif"><input type="checkbox" id="net-tgif"> TGIF</label>
                 <label class="net-label net-other"><input type="checkbox" id="net-other"> Other</label>
             </div>
-            <label class="hotspot-label"><input type="checkbox" id="show-hotspots"> Show personal hotspots</label>
-            <label class="hotspot-label"><input type="checkbox" id="show-inactive"> Show inactive repeaters</label>
+            <label class="hotspot-label"><input type="checkbox" id="show-hotspots"> <span data-i18n="show_hotspots">Show personal hotspots</span></label>
+            <label class="hotspot-label"><input type="checkbox" id="show-inactive"> <span data-i18n="show_inactive">Show inactive repeaters</span></label>
         </details>
         <details class="experimental">
-            <summary>Experimental</summary>
-            <label class="hotspot-label"><input type="checkbox" id="show-heatmap"> Visualize Last Heard Heatmap</label>
+            <summary data-i18n="experimental">Experimental</summary>
+            <label class="hotspot-label"><input type="checkbox" id="show-heatmap"> <span data-i18n="show_heatmap">Visualize Last Heard Heatmap</span></label>
         </details>
         <div class="controls-row route-row autocomplete-wrap">
-            <input type="text" id="route-from" placeholder="From address" autocomplete="off" />
+            <input type="text" id="route-from" data-i18n-placeholder="from_address" placeholder="From address" autocomplete="off" />
             <ul class="autocomplete-list" id="ac-from"></ul>
         </div>
         <div class="controls-row route-row autocomplete-wrap">
-            <input type="text" id="route-to" placeholder="To address" autocomplete="off" />
+            <input type="text" id="route-to" data-i18n-placeholder="to_address" placeholder="To address" autocomplete="off" />
             <ul class="autocomplete-list" id="ac-to"></ul>
         </div>
         <div class="controls-row route-row">
-            <button id="route-btn" disabled>Route</button>
-            <button id="clear-btn">Clear</button>
+            <button id="route-btn" data-i18n="route_btn" disabled>Route</button>
+            <button id="clear-btn" data-i18n="clear_btn">Clear</button>
         </div>
         <div class="controls-row route-row corridor-row" id="corridor-row" style="display:none">
-            <label class="corridor-label">Corridor
+            <label class="corridor-label"><span data-i18n="corridor">Corridor</span>
                 <input type="range" id="corridor-range" min="1" max="50" value="10" />
                 <span id="corridor-val">10</span> km
             </label>
@@ -56,11 +56,11 @@
         <div id="route-list" class="pin-list" style="display:none"></div>
         <div id="pin-controls" class="pin-controls" style="display:none">
             <div class="controls-row pin-header">
-                <label class="pin-radius-label">Radius
+                <label class="pin-radius-label"><span data-i18n="radius">Radius</span>
                     <input type="range" id="pin-radius" min="10" max="200" value="50" step="10" />
                     <span id="pin-radius-val">50</span> km
                 </label>
-                <button id="pin-clear" class="pin-clear-btn">Clear pin</button>
+                <button id="pin-clear" class="pin-clear-btn" data-i18n="clear_pin">Clear pin</button>
             </div>
             <div id="pin-list" class="pin-list"></div>
         </div>
@@ -73,9 +73,13 @@
             Routing by <a href="https://project-osrm.org" target="_blank" rel="noopener">OSRM</a>.
             Map by <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>.
             Built by <a rel="me" href="https://social.darc.de/@DA6KM" target="_blank" rel="noopener">DA6KM</a>.<br>
-            <a href="/impressum.html">Impressum</a> · <a href="/datenschutz.html">Datenschutz</a> · <a href="https://git.kida.io/marcus/DMRmap" target="_blank" rel="noopener">Source</a><br>
+            <a href="/impressum.html" id="link-impressum" data-i18n="impressum">Impressum</a> · <a href="/datenschutz.html" id="link-datenschutz" data-i18n="datenschutz">Datenschutz</a> · <a href="https://git.kida.io/marcus/DMRmap" target="_blank" rel="noopener" data-i18n="source">Source</a><br>
         </div>
     </div>
+    <script src="lib/i18next.min.js"></script>
+    <script src="lib/i18next-browser-languagedetector.min.js"></script>
+    <script src="lib/i18next-http-backend.min.js"></script>
+    <script src="i18n.js"></script>
     <script src="lib/leaflet.js"></script>
     <script src="lib/socket.io.min.js"></script>
     <script src="app.js"></script>

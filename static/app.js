@@ -97,7 +97,7 @@
             }
             acTimer = setTimeout(function () {
                 acController = new AbortController();
-                listEl.innerHTML = '<li class="ac-loading"><span class="spinner"></span>Searching...</li>';
+                listEl.innerHTML = '<li class="ac-loading"><span class="spinner"></span>' + t("searching") + '</li>';
                 listEl.classList.add("open");
                 fetch(
                     "https://nominatim.openstreetmap.org/search?" +
@@ -106,7 +106,7 @@
                             format: "json",
                             limit: "5",
                             addressdetails: "0",
-                            "accept-language": "de",
+                            "accept-language": getLocale(),
                         }),
                     { signal: acController.signal }
                 )
@@ -234,7 +234,7 @@
     }
 
     function showCount(count) {
-        countEl.textContent = count + " repeater" + (count !== 1 ? "s" : "");
+        countEl.textContent = t("repeater_count", { count: count });
     }
 
     function showStatus(msg) {
@@ -247,50 +247,50 @@
         var html = '<div class="rptr-popup">';
         html += '<h3><a href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + '</a> <span class="band-tag ' + bandClass + '">' + escapeHtml(r.band) + "</span></h3>";
         html += "<table>";
-        html += "<tr><td>TX</td><td>" + r.freq_tx.toFixed(4) + " MHz</td></tr>";
+        html += "<tr><td>" + t("popup_tx") + "</td><td>" + r.freq_tx.toFixed(4) + " MHz</td></tr>";
         if (r.freq_rx)
-            html += "<tr><td>RX</td><td>" + r.freq_rx.toFixed(4) + " MHz</td></tr>";
+            html += "<tr><td>" + t("popup_rx") + "</td><td>" + r.freq_rx.toFixed(4) + " MHz</td></tr>";
         if (r.freq_offset)
             html +=
-                "<tr><td>Offset</td><td>" +
+                "<tr><td>" + t("popup_offset") + "</td><td>" +
                 escapeHtml(r.freq_offset) +
                 " MHz</td></tr>";
-        html += "<tr><td>CC</td><td>" + r.color_code + "</td></tr>";
+        html += "<tr><td>" + t("popup_cc") + "</td><td>" + r.color_code + "</td></tr>";
         var loc = escapeHtml(r.city);
         if (r.state) loc += ", " + escapeHtml(r.state);
         if (r.country) loc += ", " + escapeHtml(r.country);
-        html += "<tr><td>Location</td><td>" + loc + "</td></tr>";
+        html += "<tr><td>" + t("popup_location") + "</td><td>" + loc + "</td></tr>";
         if (r.networks && r.networks.length)
             html +=
-                "<tr><td>Network</td><td>" +
+                "<tr><td>" + t("popup_network") + "</td><td>" +
                 r.networks.map(escapeHtml).join(", ") +
                 "</td></tr>";
         if (r.trustee)
             html +=
-                "<tr><td>Trustee</td><td>" +
+                "<tr><td>" + t("popup_trustee") + "</td><td>" +
                 escapeHtml(r.trustee) +
                 "</td></tr>";
         if (r.ts_linked)
             html +=
-                "<tr><td>Timeslots</td><td>" +
+                "<tr><td>" + t("popup_timeslots") + "</td><td>" +
                 escapeHtml(r.ts_linked) +
                 "</td></tr>";
         html +=
-            "<tr><td>Status</td><td>" +
+            "<tr><td>" + t("popup_status") + "</td><td>" +
             escapeHtml(r.status) +
             "</td></tr>";
         if (r.bm_status_text)
-            html += "<tr><td>BM Status</td><td>" + escapeHtml(r.bm_status_text) + "</td></tr>";
+            html += "<tr><td>" + t("popup_bm_status") + "</td><td>" + escapeHtml(r.bm_status_text) + "</td></tr>";
         if (r.last_seen)
-            html += "<tr><td>Last seen</td><td>" + escapeHtml(r.last_seen.replace("T", " ").substring(0, 19)) + "</td></tr>";
+            html += "<tr><td>" + t("popup_last_seen") + "</td><td>" + escapeHtml(r.last_seen.replace("T", " ").substring(0, 19)) + "</td></tr>";
         if (r.hardware)
-            html += "<tr><td>Hardware</td><td>" + escapeHtml(r.hardware) + "</td></tr>";
+            html += "<tr><td>" + t("popup_hardware") + "</td><td>" + escapeHtml(r.hardware) + "</td></tr>";
         if (r.pep)
-            html += "<tr><td>Power</td><td>" + r.pep + " W</td></tr>";
+            html += "<tr><td>" + t("popup_power") + "</td><td>" + r.pep + " W</td></tr>";
         if (r.agl)
-            html += "<tr><td>Antenna</td><td>" + r.agl + " m AGL</td></tr>";
+            html += "<tr><td>" + t("popup_antenna") + "</td><td>" + r.agl + " m AGL</td></tr>";
         if (r.inactive)
-            html += '<tr><td></td><td style="color:#ef5350;font-weight:600">Inactive</td></tr>';
+            html += '<tr><td></td><td style="color:#ef5350;font-weight:600">' + t("popup_inactive") + '</td></tr>';
         html += "</table></div>";
         return html;
     }
@@ -357,7 +357,7 @@
             .catch(function (err) {
                 if (err.name === "AbortError") return;
                 console.error("Fetch error:", err);
-                showStatus("Error");
+                showStatus(t("error"));
             });
     }
 
@@ -369,7 +369,7 @@
                     q: address,
                     format: "json",
                     limit: "1",
-                    "accept-language": "de",
+                    "accept-language": getLocale(),
                 })
         )
             .then(function (resp) {
@@ -414,7 +414,7 @@
             return;
         }
 
-        showStatus("Loading...");
+        showStatus(t("loading"));
         return fetch("/api/repeaters/route", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -440,7 +440,7 @@
             })
             .catch(function (err) {
                 console.error("Route fetch error:", err);
-                showStatus("Error");
+                showStatus(t("error"));
             });
     }
 
@@ -522,8 +522,8 @@
         if (isPinMode) clearPin();
         if (isSearchMode) clearSearch();
         routeBtn.disabled = true;
-        routeBtn.innerHTML = '<span class="spinner"></span>Routing...';
-        showStatus("Geocoding...");
+        routeBtn.innerHTML = '<span class="spinner"></span>' + t("routing");
+        showStatus(t("geocoding"));
 
         geocode(fromAddr)
             .then(function (from) {
@@ -532,7 +532,7 @@
                 });
             })
             .then(function (endpoints) {
-                showStatus("Routing...");
+                showStatus(t("routing"));
                 return getRoute(endpoints.from, endpoints.to);
             })
             .then(function (latLngs) {
@@ -560,7 +560,7 @@
             })
             .then(function () {
                 routeBtn.disabled = false;
-                routeBtn.textContent = "Route";
+                routeBtn.textContent = t("route_btn");
             });
     }
 
@@ -596,7 +596,7 @@
             return;
         }
 
-        showStatus("Loading...");
+        showStatus(t("loading"));
         var params = new URLSearchParams({
             lat: pinLatLng.lat,
             lng: pinLatLng.lng,
@@ -619,7 +619,7 @@
             })
             .catch(function (err) {
                 console.error("Pin fetch error:", err);
-                showStatus("Error");
+                showStatus(t("error"));
             });
     }
 
@@ -912,7 +912,7 @@
 
         if (searchController) searchController.abort();
         searchController = new AbortController();
-        showStatus("Searching...");
+        showStatus(t("searching"));
 
         fetch("/api/repeaters/search?q=" + encodeURIComponent(q), { signal: searchController.signal })
             .then(function (resp) {
@@ -939,7 +939,7 @@
                 if (data.total > data.count) {
                     var msg = document.createElement("div");
                     msg.className = "search-more-msg";
-                    msg.textContent = "Showing " + data.count + " of " + data.total + " results";
+                    msg.textContent = t("showing_results", { count: data.count, total: data.total });
                     searchListEl.appendChild(msg);
                 }
                 searchListEl.style.display = "";
@@ -947,7 +947,7 @@
             .catch(function (err) {
                 if (err.name === "AbortError") return;
                 console.error("Search error:", err);
-                showStatus("Error");
+                showStatus(t("error"));
             });
     }
 
@@ -1007,9 +1007,17 @@
     window.addEventListener("hashchange", checkHash);
 
     // === Init ===
-    if (window.location.hash) {
-        checkHash();
+    function initApp() {
+        if (window.location.hash) {
+            checkHash();
+        } else {
+            fetchRepeaters();
+        }
+    }
+
+    if (i18next.isInitialized) {
+        initApp();
     } else {
-        fetchRepeaters();
+        document.addEventListener("i18n-ready", initApp);
     }
 })();

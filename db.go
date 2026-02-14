@@ -41,7 +41,7 @@ func (a *StringArray) Scan(src interface{}) error {
 }
 
 func (a StringArray) Value() (driver.Value, error) {
-	if a == nil || len(a) == 0 {
+	if len(a) == 0 {
 		return "{}", nil
 	}
 	elems := make([]string, len(a))
