@@ -1,4 +1,4 @@
-var SUPPORTED_LANGS = ["en", "de", "es", "fr"];
+var SUPPORTED_LANGS = ["en", "de", "es", "fr", "it", "pl"];
 
 function translateDOM() {
     document.querySelectorAll("[data-i18n]").forEach(function (el) {
