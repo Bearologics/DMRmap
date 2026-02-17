@@ -38,5 +38,17 @@
     "back_to_map": "Back to map",
     "impressum": "Legal Notice",
     "datenschutz": "Privacy Policy",
-    "source": "Source"
+    "source": "Source",
+    "cps_studio_btn": "CPS Studio",
+    "cps_studio_title": "CPS Studio",
+    "cps_experimental_note": "This feature is still in development. Please review the generated output before importing.",
+    "cps_tg_id": "TG",
+    "cps_tg_name": "Name",
+    "cps_tg_slot": "Timeslot",
+    "cps_add_tg_placeholder": "Add TG by ID or name...",
+    "cps_download_xml": "Download XML",
+    "cps_copy_xml": "Copy to Clipboard",
+    "cps_copied": "Copied!",
+    "cps_unknown_tg": "Unknown",
+    "cps_channel_count": "{{channels}} channels ({{repeaters}} repeaters × {{tgs}} talk groups)"
 }

@@ -38,5 +38,17 @@
     "back_to_map": "Torna alla mappa",
     "impressum": "Note legali",
     "datenschutz": "Informativa sulla privacy",
-    "source": "Codice sorgente"
+    "source": "Codice sorgente",
+    "cps_studio_btn": "CPS Studio",
+    "cps_studio_title": "CPS Studio",
+    "cps_experimental_note": "Questa funzione è ancora in fase di sviluppo. Verifica l'output generato prima dell'importazione.",
+    "cps_tg_id": "TG",
+    "cps_tg_name": "Nome",
+    "cps_tg_slot": "Timeslot",
+    "cps_add_tg_placeholder": "Aggiungi TG per ID o nome...",
+    "cps_download_xml": "Scarica XML",
+    "cps_copy_xml": "Copia negli appunti",
+    "cps_copied": "Copiato!",
+    "cps_unknown_tg": "Sconosciuto",
+    "cps_channel_count": "{{channels}} canali ({{repeaters}} ripetitori × {{tgs}} gruppi)"
 }

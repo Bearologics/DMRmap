@@ -1,4 +1,5 @@
 FROM golang:1.25-alpine
 RUN go install github.com/air-verse/air@latest
+RUN wget -qO /usr/local/share/talkgroups.json https://api.brandmeister.network/v2/talkgroup
 WORKDIR /app
-CMD ["air"]
+CMD cp -n /usr/local/share/talkgroups.json static/talkgroups.json 2>/dev/null; air

@@ -3,3 +3,4 @@ data/
 dmrmap
 compose.override.yml
 .env
+static/talkgroups.json

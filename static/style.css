@@ -325,6 +325,7 @@ html, body {
     cursor: pointer;
     border-bottom: 1px solid var(--border-lighter);
     line-height: 1.3;
+    color: var(--text);
 }
 
 .autocomplete-list li:last-child {
@@ -560,6 +561,25 @@ html, body {
     white-space: nowrap;
 }
 
+.cps-copy-btn {
+    display: block;
+    width: 100%;
+    padding: 5px 8px;
+    margin-bottom: 4px;
+    background: var(--clear-btn-bg);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.cps-copy-btn:hover {
+    background: var(--clear-btn-hover);
+    color: var(--text);
+}
+
 .attribution {
     margin-top: 8px;
     padding-top: 8px;
@@ -636,6 +656,310 @@ html, body {
     animation: heatmap-pulse 2s ease-in-out infinite;
 }
 
+/* CPS Studio Modal */
+
+.cps-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cps-modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.cps-modal-dialog {
+    position: relative;
+    background: var(--bg);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px var(--shadow);
+    width: 90%;
+    max-width: 600px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.cps-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.cps-modal-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+
+.cps-exp-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #ff9800;
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: auto;
+    margin-left: 8px;
+}
+
+.cps-exp-note {
+    font-size: 11px;
+    color: var(--text-faint);
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+}
+
+.cps-modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: var(--text-faint);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.cps-modal-close:hover {
+    color: var(--text);
+    background: var(--hover-bg);
+}
+
+.cps-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px;
+}
+
+.cps-repeater-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+}
+
+.cps-rptr-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--text);
+    transition: opacity 0.15s, background 0.15s;
+    user-select: none;
+}
+
+.cps-rptr-tag.active {
+    background: #4CAF50;
+    border-color: #4CAF50;
+    color: white;
+}
+
+.cps-rptr-tag:not(.active) {
+    opacity: 0.45;
+}
+
+.cps-rptr-tag:hover {
+    opacity: 1;
+}
+
+.cps-tg-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.cps-tg-table th {
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 6px 4px;
+    border-bottom: 2px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.cps-tg-table td {
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border-lighter);
+    color: var(--text);
+    vertical-align: middle;
+}
+
+.cps-tg-table .tg-id {
+    font-weight: 600;
+    font-family: "SF Mono", "Menlo", "Monaco", "Consolas", monospace;
+    min-width: 60px;
+}
+
+.cps-tg-table .tg-name {
+    color: var(--text-muted);
+}
+
+.ts-toggle {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ts-toggle button {
+    padding: 3px 10px;
+    border: none;
+    background: none;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-faint);
+}
+
+.ts-toggle button.active {
+    background: #4CAF50;
+    color: white;
+}
+
+.ts-toggle button:not(.active):hover {
+    background: var(--hover-bg);
+}
+
+.tg-remove-btn {
+    background: none;
+    border: none;
+    color: var(--text-fainter);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    line-height: 1;
+}
+
+.tg-remove-btn:hover {
+    color: #ef5350;
+    background: var(--hover-bg);
+}
+
+.cps-add-tg-row {
+    margin-top: 8px;
+}
+
+.cps-add-tg-row input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 12px;
+    background: var(--input-bg);
+    color: var(--text);
+    outline: none;
+}
+
+.cps-add-tg-row input:focus {
+    border-color: #4CAF50;
+}
+
+.cps-ac-list:not(:empty) {
+    display: block;
+}
+
+.autocomplete-list li.ac-disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.autocomplete-list li.ac-disabled:hover {
+    background: none;
+}
+
+.cps-channel-count {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-fainter);
+}
+
+.cps-modal-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border-light);
+}
+
+.cps-btn-primary {
+    flex: 1;
+    padding: 8px 16px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cps-btn-primary:hover {
+    background: #43A047;
+}
+
+.cps-btn-primary:disabled {
+    background: #A5D6A7;
+    cursor: default;
+}
+
+.cps-btn-secondary {
+    flex: 1;
+    padding: 8px 16px;
+    background: var(--clear-btn-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cps-btn-secondary:hover {
+    background: var(--clear-btn-hover);
+}
+
+.cps-btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+    .cps-btn-primary:disabled {
+        background: #2e7d32;
+        color: #a5d6a7;
+    }
+
+    .cps-modal-backdrop {
+        background: rgba(0, 0, 0, 0.7);
+    }
+}
+
 @media (max-width: 768px) {
     #controls {
         top: 10px;
@@ -643,5 +967,13 @@ html, body {
         left: 10px;
         width: auto;
         padding: 8px 10px;
+    }
+
+    .cps-modal-dialog {
+        width: 100%;
+        max-width: none;
+        max-height: 100vh;
+        border-radius: 0;
+        height: 100%;
     }
 }

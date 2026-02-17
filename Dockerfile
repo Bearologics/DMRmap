@@ -13,5 +13,6 @@ COPY --from=builder /build/migrations/ ./migrations/
 COPY static/ ./static/
 COPY rptrs.json .
 COPY bmrptrs.json .
+RUN wget -qO static/talkgroups.json https://api.brandmeister.network/v2/talkgroup
 EXPOSE 8080
 CMD ["./dmrmap"]

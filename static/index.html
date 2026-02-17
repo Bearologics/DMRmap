@@ -76,6 +76,41 @@
             <a href="/impressum.html" id="link-impressum" data-i18n="impressum">Impressum</a> · <a href="/datenschutz.html" id="link-datenschutz" data-i18n="datenschutz">Datenschutz</a> · <a href="https://git.kida.io/marcus/DMRmap" target="_blank" rel="noopener" data-i18n="source">Source</a><br>
         </div>
     </div>
+    <div id="cps-modal" class="cps-modal" style="display:none">
+        <div class="cps-modal-backdrop"></div>
+        <div class="cps-modal-dialog">
+            <div class="cps-modal-header">
+                <h2 data-i18n="cps_studio_title">CPS Studio</h2> <span class="cps-exp-badge" data-i18n="experimental">Experimental</span>
+                <button type="button" class="cps-modal-close" id="cps-modal-close">&times;</button>
+            </div>
+            <div class="cps-modal-body">
+                <p class="cps-exp-note" data-i18n="cps_experimental_note">This feature is still in development. Please review the generated output before importing.</p>
+                <div class="cps-repeater-tags" id="cps-repeater-tags"></div>
+                <div id="cps-tg-section">
+                    <table class="cps-tg-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="cps_tg_id">TG</th>
+                                <th data-i18n="cps_tg_name">Name</th>
+                                <th data-i18n="cps_tg_slot">Timeslot</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="cps-tg-tbody"></tbody>
+                    </table>
+                    <div class="cps-add-tg-row autocomplete-wrap">
+                        <input type="text" id="cps-add-tg-input" data-i18n-placeholder="cps_add_tg_placeholder" placeholder="Add TG by ID or name..." autocomplete="off" />
+                        <ul class="autocomplete-list cps-ac-list" id="cps-ac-list"></ul>
+                    </div>
+                    <div class="cps-channel-count" id="cps-channel-count"></div>
+                </div>
+            </div>
+            <div class="cps-modal-footer">
+                <button type="button" id="cps-download-btn" class="cps-btn-primary" disabled data-i18n="cps_download_xml">Download XML</button>
+                <button type="button" id="cps-copy-btn" class="cps-btn-secondary" disabled data-i18n="cps_copy_xml">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
     <script src="lib/i18next.min.js"></script>
     <script src="lib/i18next-browser-languagedetector.min.js"></script>
     <script src="lib/i18next-http-backend.min.js"></script>

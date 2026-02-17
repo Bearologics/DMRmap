@@ -60,6 +60,23 @@
 
     clearBtn.style.display = "none";
 
+    // === CPS Studio DOM + State ===
+    var cpsModal = document.getElementById("cps-modal");
+    var cpsModalClose = document.getElementById("cps-modal-close");
+    var cpsTgTbody = document.getElementById("cps-tg-tbody");
+    var cpsRepeaterTags = document.getElementById("cps-repeater-tags");
+    var cpsAddTgInput = document.getElementById("cps-add-tg-input");
+    var cpsAcList = document.getElementById("cps-ac-list");
+    var cpsDownloadBtn = document.getElementById("cps-download-btn");
+    var cpsCopyBtn = document.getElementById("cps-copy-btn");
+    var cpsChannelCount = document.getElementById("cps-channel-count");
+
+    var cpsRepeaters = [];
+    var cpsActiveRepeaters = {};
+    var cpsTalkgroups = [];
+    var tgRegistry = null;
+    var tgRegistryPromise = null;
+
     // === Autocomplete ===
     function setupAutocomplete(input, listEl) {
         var acTimer = null;
@@ -231,6 +248,272 @@
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
             .replace(/"/g, "&quot;");
+    }
+
+    // Fallback TG names from wiki.bm262.de for German-speaking region
+    var BM262_TALKGROUPS = {
+        "262": "Deutschland", "263": "MultiMode DL",
+        "2620": "Sachsen-Anhalt/Mecklenburg-Vorpommern", "2621": "Berlin/Brandenburg",
+        "2622": "Hamburg/Schleswig-Holstein", "2623": "Niedersachsen/Bremen",
+        "2624": "Nordrhein-Westfalen", "2625": "Rheinland-Pfalz/Saarland",
+        "2626": "Hessen", "2627": "Baden-W\u00fcrttemberg", "2628": "Bayern",
+        "2629": "Sachsen/Th\u00fcringen", "26200": "TAC 1", "26209": "Brandenburg",
+        "26212": "Berlin-City", "26220": "Grossraum Hamburg", "26221": "Hamburg-City",
+        "26222": "Ostholstein-Nord", "26223": "Chaoswelle", "26224": "Elbe-Weser",
+        "26225": "AFU-Nord", "26226": "DMR Netzverbund Nord", "26228": "Ostholstein S\u00fcd",
+        "26231": "NI Mitte", "26232": "Dreil\u00e4ndereck Mitte Deutschland", "26233": "TAC 3",
+        "26234": "NI-Sued", "26236": "NI-Nord", "26239": "NI Ost",
+        "26241": "Rheinland", "26242": "Muensterland", "26243": "Ruhrgebiet",
+        "26245": "Rheinland-Sued", "26249": "Siebengebirge", "26250": "Saarland",
+        "26256": "Eifel-Hunsrueck", "26257": "Siegerland", "26260": "Mittelhessen",
+        "26261": "Nordhessen", "26262": "Rhein-Main-Neckar", "26263": "Bergstrasse",
+        "26266": "TAC 4", "26270": "Stuttgart", "26271": "Baden",
+        "26272": "Neckar-Odenwald", "26273": "BW-Ostalb", "26274": "BW B\u00f6blingen",
+        "26275": "Schwarzwald Nord", "26276": "Neckar-Alb", "26277": "Schwarzwald",
+        "26278": "BW Herrenberg", "26279": "BW Mittlerer Neckar", "26280": "Niederbayern",
+        "26282": "Schwaben", "26283": "Region M\u00fcnchen", "26284": "Region Franken",
+        "26285": "Region Ingolstadt", "26286": "Coburg-Rennsteig",
+        "26287": "Allg\u00e4u-Bodensee", "26288": "Region Bayern Oberland",
+        "26289": "Oberpfalz", "26298": "Th\u00fcringen", "26299": "TAC 2",
+        "26300": "Multimode TAC 1", "26301": "Sachsen-Erzgebirge",
+        "26322": "D22 - Neue Medien", "26331": "NI Ost", "26333": "Multimode TAC 3",
+        "26338": "afu38", "26345": "Paderborn", "26346": "Ostwestfalen-Lippe",
+        "26347": "IGA Rhein-Erft", "26348": "Westmuensterland", "26349": "Hochsauerland",
+        "26366": "Multimode TAC 4", "26375": "Bodensee-Oberschwaben", "26377": "Ortenau",
+        "26384": "Schrobenhausen", "26399": "Multimode TAC2", "26426": "FM-Funknetz",
+        "26429": "DL-Nordwest", "262810": "Projekt Pegasus", "263112": "HiOrg-Talk EmComm",
+        "263113": "(Un)Wetter Netz", "263333": "Twitterrunde",
+        "263852": "DARC Dachau - C06 Runde", "264022": "Whitesticker"
+    };
+
+    function tgName(id) {
+        var key = String(id);
+        if (tgRegistry && tgRegistry[key]) return tgRegistry[key];
+        if (BM262_TALKGROUPS[key]) return BM262_TALKGROUPS[key];
+        return "";
+    }
+
+    function escapeXml(str) {
+        if (!str) return "";
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&apos;");
+    }
+
+    function buildChannel(alias, slot, colorCode, txHz, rxHz) {
+        var slotName = slot === "SLOT1" ? "1" : "2";
+        return '        <set name="ConventionalPersonality" alias="' + escapeXml(alias) + '" key="DGTLCONV6PT25">\n' +
+            '          <field name="CP_PERSTYPE" Name="Digital">DGTLCONV6PT25</field>\n' +
+            '          <field name="CP_CNVPERSALIAS">' + escapeXml(alias) + '</field>\n' +
+            '          <field name="CP_SLTASSGMNT" Name="' + slotName + '">' + slot + '</field>\n' +
+            '          <field name="CP_COLORCODE">' + colorCode + '</field>\n' +
+            '          <field name="CP_TXFREQ">' + txHz + '</field>\n' +
+            '          <field name="CP_RXFREQ">' + rxHz + '</field>\n' +
+            '          <field name="CP_TXINHXPLEN" Name="Color Code Free">MTCHCLRCD</field>\n' +
+            '          <field name="CP_TOT">180</field>\n' +
+            '        </set>\n';
+    }
+
+    function generateCpsXml(repeaters, talkgroups) {
+        var channels = "";
+        repeaters.forEach(function (r) {
+            var txHz = Math.round(r.freq_tx * 1000000);
+            var rxHz = Math.round(r.freq_rx * 1000000);
+            var cc = r.color_code;
+            talkgroups.forEach(function (tg) {
+                var slot = tg.slot === "1" ? "SLOT1" : "SLOT2";
+                var alias = (r.callsign + " TG" + tg.id).substring(0, 16);
+                channels += buildChannel(alias, slot, cc, txHz, rxHz);
+            });
+        });
+        return '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' +
+            "<config>\n" +
+            '  <category name="Zone">\n' +
+            '    <set name="Zone" alias="DMRmap">\n' +
+            '      <field name="ZP_ZONEALIAS">DMRmap</field>\n' +
+            '      <field name="ZP_ZONETYPE" Name="Normal">NORMAL</field>\n' +
+            '      <collection name="ZoneItems">\n' +
+            channels +
+            "      </collection>\n" +
+            "    </set>\n" +
+            "  </category>\n" +
+            "</config>";
+    }
+
+    // === BrandMeister API ===
+    function fetchTgRegistry() {
+        if (tgRegistry) return Promise.resolve(tgRegistry);
+        if (tgRegistryPromise) return tgRegistryPromise;
+        tgRegistryPromise = fetch("/talkgroups.json")
+            .then(function (r) { return r.json(); })
+            .then(function (data) { tgRegistry = data; return data; })
+            .catch(function () { tgRegistryPromise = null; return {}; });
+        return tgRegistryPromise;
+    }
+
+    // === CPS Studio Modal ===
+    function openCpsModal(repeaters) {
+        cpsRepeaters = repeaters;
+        cpsActiveRepeaters = {};
+        repeaters.forEach(function (r) { cpsActiveRepeaters[r.id] = true; });
+        cpsTalkgroups = [];
+        cpsModal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+        cpsTgTbody.innerHTML = "";
+        renderRepeaterTags();
+        renderTgTable();
+        updateChannelCount();
+        updateCpsButtons();
+        translateDOM();
+    }
+
+    function renderRepeaterTags() {
+        cpsRepeaterTags.innerHTML = "";
+        cpsRepeaters.forEach(function (r) {
+            var tag = document.createElement("button");
+            tag.type = "button";
+            tag.className = "cps-rptr-tag" + (cpsActiveRepeaters[r.id] ? " active" : "");
+            tag.textContent = r.callsign;
+            tag.addEventListener("click", function () {
+                if (cpsActiveRepeaters[r.id]) {
+                    delete cpsActiveRepeaters[r.id];
+                } else {
+                    cpsActiveRepeaters[r.id] = true;
+                }
+                tag.classList.toggle("active");
+                updateChannelCount();
+                updateCpsButtons();
+            });
+            cpsRepeaterTags.appendChild(tag);
+        });
+    }
+
+    function getActiveRepeaters() {
+        return cpsRepeaters.filter(function (r) { return cpsActiveRepeaters[r.id]; });
+    }
+
+    function updateCpsButtons() {
+        var hasData = getActiveRepeaters().length > 0 && cpsTalkgroups.length > 0;
+        cpsDownloadBtn.disabled = !hasData;
+        cpsCopyBtn.disabled = !hasData;
+    }
+
+    function closeCpsModal() {
+        cpsModal.style.display = "none";
+        document.body.style.overflow = "";
+        cpsAddTgInput.value = "";
+        cpsAcList.innerHTML = "";
+    }
+
+    function renderTgTable() {
+        cpsTgTbody.innerHTML = "";
+        cpsTalkgroups.forEach(function (tg, idx) {
+            var tr = document.createElement("tr");
+
+            var tdId = document.createElement("td");
+            tdId.className = "tg-id";
+            tdId.textContent = tg.id;
+            tr.appendChild(tdId);
+
+            var tdName = document.createElement("td");
+            tdName.className = "tg-name";
+            tdName.textContent = tg.name || t("cps_unknown_tg");
+            tr.appendChild(tdName);
+
+            var tdSlot = document.createElement("td");
+            var toggle = document.createElement("div");
+            toggle.className = "ts-toggle";
+            var btn1 = document.createElement("button");
+            btn1.type = "button";
+            btn1.textContent = "TS1";
+            if (tg.slot === "1") btn1.className = "active";
+            var btn2 = document.createElement("button");
+            btn2.type = "button";
+            btn2.textContent = "TS2";
+            if (tg.slot === "2") btn2.className = "active";
+            btn1.addEventListener("click", (function (i) {
+                return function () { cpsTalkgroups[i].slot = "1"; renderTgTable(); updateChannelCount(); };
+            })(idx));
+            btn2.addEventListener("click", (function (i) {
+                return function () { cpsTalkgroups[i].slot = "2"; renderTgTable(); updateChannelCount(); };
+            })(idx));
+            toggle.appendChild(btn1);
+            toggle.appendChild(btn2);
+            tdSlot.appendChild(toggle);
+            tr.appendChild(tdSlot);
+
+            var tdRemove = document.createElement("td");
+            var removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.className = "tg-remove-btn";
+            removeBtn.innerHTML = "&times;";
+            removeBtn.addEventListener("click", (function (i) {
+                return function () { cpsTalkgroups.splice(i, 1); renderTgTable(); updateChannelCount(); updateCpsButtons(); };
+            })(idx));
+            tdRemove.appendChild(removeBtn);
+            tr.appendChild(tdRemove);
+
+            cpsTgTbody.appendChild(tr);
+        });
+    }
+
+    function updateChannelCount() {
+        var active = getActiveRepeaters().length;
+        var total = active * cpsTalkgroups.length;
+        cpsChannelCount.textContent = t("cps_channel_count", {
+            repeaters: active,
+            tgs: cpsTalkgroups.length,
+            channels: total
+        });
+    }
+
+    function addTalkgroupById(tgId) {
+        if (cpsTalkgroups.some(function (tg) { return tg.id === tgId; })) return;
+        cpsTalkgroups.push({ id: tgId, name: tgName(tgId), slot: "2" });
+        cpsTalkgroups.sort(function (a, b) { return a.id - b.id; });
+        renderTgTable();
+        updateChannelCount();
+        updateCpsButtons();
+    }
+
+    function downloadCpsXml() {
+        var active = getActiveRepeaters();
+        if (!cpsTalkgroups.length || !active.length) return;
+        var xml = generateCpsXml(active, cpsTalkgroups);
+        var blob = new Blob([xml], { type: "application/xml" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "dmrmap-cps.xml";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function copyCpsXml() {
+        var active = getActiveRepeaters();
+        if (!cpsTalkgroups.length || !active.length) return;
+        var xml = generateCpsXml(active, cpsTalkgroups);
+        var origText = cpsCopyBtn.textContent;
+        navigator.clipboard.writeText(xml).then(function () {
+            cpsCopyBtn.textContent = t("cps_copied");
+            setTimeout(function () { cpsCopyBtn.textContent = origText; }, 2000);
+        }).catch(function () {
+            var ta = document.createElement("textarea");
+            ta.value = xml;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            document.body.removeChild(ta);
+            cpsCopyBtn.textContent = t("cps_copied");
+            setTimeout(function () { cpsCopyBtn.textContent = origText; }, 2000);
+        });
     }
 
     function showCount(count) {
@@ -625,6 +908,16 @@
 
     function renderRepeaterList(container, repeaters) {
         container.innerHTML = "";
+        if (repeaters.length > 0) {
+            var cpsBtn = document.createElement("button");
+            cpsBtn.className = "cps-copy-btn";
+            cpsBtn.textContent = t("cps_studio_btn");
+            cpsBtn.addEventListener("click", function (e) {
+                e.stopPropagation();
+                openCpsModal(repeaters);
+            });
+            container.appendChild(cpsBtn);
+        }
         repeaters.forEach(function (r) {
             var item = document.createElement("div");
             item.className = "pin-list-item";
@@ -971,6 +1264,105 @@
         fetchRepeaters();
     });
 
+    // === CPS Studio Events ===
+    cpsModalClose.addEventListener("click", closeCpsModal);
+    document.querySelector(".cps-modal-backdrop").addEventListener("click", closeCpsModal);
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && cpsModal.style.display !== "none") {
+            if (cpsAcList.children.length) {
+                cpsAcList.innerHTML = "";
+                cpsAcIdx = -1;
+            } else {
+                closeCpsModal();
+            }
+        }
+    });
+    cpsDownloadBtn.addEventListener("click", downloadCpsXml);
+    cpsCopyBtn.addEventListener("click", copyCpsXml);
+
+    // TG autocomplete
+    var cpsAcIdx = -1;
+    var cpsAcTimer = null;
+
+    function searchTalkgroups(query) {
+        if (!tgRegistry) return [];
+        var q = query.toLowerCase();
+        var isNum = /^\d+$/.test(query);
+        var results = [];
+        for (var id in tgRegistry) {
+            if (isNum ? id.indexOf(query) === 0 : tgRegistry[id].toLowerCase().indexOf(q) !== -1) {
+                results.push({ id: parseInt(id), name: tgRegistry[id] });
+            }
+            if (results.length >= 8) break;
+        }
+        // also search BM262 fallback
+        for (var bmId in BM262_TALKGROUPS) {
+            if (results.some(function (r) { return r.id === parseInt(bmId); })) continue;
+            if (isNum ? bmId.indexOf(query) === 0 : BM262_TALKGROUPS[bmId].toLowerCase().indexOf(q) !== -1) {
+                results.push({ id: parseInt(bmId), name: BM262_TALKGROUPS[bmId] });
+            }
+            if (results.length >= 8) break;
+        }
+        return results;
+    }
+
+    function renderCpsAc(results) {
+        cpsAcList.innerHTML = "";
+        cpsAcIdx = -1;
+        results.forEach(function (r) {
+            var li = document.createElement("li");
+            li.textContent = r.id + " — " + (r.name || t("cps_unknown_tg"));
+            if (cpsTalkgroups.some(function (tg) { return tg.id === r.id; })) {
+                li.className = "ac-disabled";
+            } else {
+                li.addEventListener("click", function () {
+                    addTalkgroupById(r.id);
+                    cpsAddTgInput.value = "";
+                    cpsAcList.innerHTML = "";
+                    cpsAcIdx = -1;
+                    cpsAddTgInput.focus();
+                });
+            }
+            cpsAcList.appendChild(li);
+        });
+    }
+
+    cpsAddTgInput.addEventListener("input", function () {
+        clearTimeout(cpsAcTimer);
+        var val = cpsAddTgInput.value.trim();
+        if (!val) { cpsAcList.innerHTML = ""; cpsAcIdx = -1; return; }
+        cpsAcTimer = setTimeout(function () {
+            renderCpsAc(searchTalkgroups(val));
+        }, 120);
+    });
+
+    cpsAddTgInput.addEventListener("keydown", function (e) {
+        var items = cpsAcList.querySelectorAll("li:not(.ac-disabled)");
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            cpsAcIdx = Math.min(cpsAcIdx + 1, items.length - 1);
+            items.forEach(function (li, i) { li.classList.toggle("active", i === cpsAcIdx); });
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            cpsAcIdx = Math.max(cpsAcIdx - 1, 0);
+            items.forEach(function (li, i) { li.classList.toggle("active", i === cpsAcIdx); });
+        } else if (e.key === "Enter") {
+            e.preventDefault();
+            if (cpsAcIdx >= 0 && items[cpsAcIdx]) {
+                items[cpsAcIdx].click();
+            } else {
+                var val = cpsAddTgInput.value.trim();
+                var tgId = parseInt(val);
+                if (!isNaN(tgId) && tgId > 0) {
+                    addTalkgroupById(tgId);
+                    cpsAddTgInput.value = "";
+                    cpsAcList.innerHTML = "";
+                    cpsAcIdx = -1;
+                }
+            }
+        }
+    });
+
     // === Hash navigation ===
     function checkHash() {
         var hash = decodeURIComponent(window.location.hash.replace("#", ""));
@@ -1007,6 +1399,8 @@
     window.addEventListener("hashchange", checkHash);
 
     // === Init ===
+    fetchTgRegistry();
+
     function initApp() {
         if (window.location.hash) {
             checkHash();

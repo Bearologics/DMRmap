@@ -38,5 +38,17 @@
     "back_to_map": "Volver al mapa",
     "impressum": "Aviso legal",
     "datenschutz": "Política de privacidad",
-    "source": "Código fuente"
+    "source": "Código fuente",
+    "cps_studio_btn": "CPS Studio",
+    "cps_studio_title": "CPS Studio",
+    "cps_experimental_note": "Esta función aún está en desarrollo. Revisa el resultado generado antes de importarlo.",
+    "cps_tg_id": "TG",
+    "cps_tg_name": "Nombre",
+    "cps_tg_slot": "Timeslot",
+    "cps_add_tg_placeholder": "Añadir TG por ID o nombre...",
+    "cps_download_xml": "Descargar XML",
+    "cps_copy_xml": "Copiar al portapapeles",
+    "cps_copied": "¡Copiado!",
+    "cps_unknown_tg": "Desconocido",
+    "cps_channel_count": "{{channels}} canales ({{repeaters}} repetidores × {{tgs}} grupos)"
 }
