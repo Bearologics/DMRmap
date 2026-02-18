@@ -531,14 +531,22 @@
         "Delete_CapacityPlusCalls,CapacityPlusCalls-CAPPLUSUCL_CALLLSTID,CapacityPlusCalls-CAPPLUSUCL_ROUTETYPE,CapacityPlusCalls-CAPPLUSUCL_CALLPRCDTNEN,CapacityPlusCalls-CAPPLUSUCL_RINGTYPE,CapacityPlusCalls-CAPPLUSUCL_TXTMSGALTTNTP,CapacityPlusCalls-CAPPLUSUCL_CALLTYPE," +
         "Delete_PhoneCalls,PhoneCalls-PHNUCLELL_CALLID,PhoneCalls-PHNUCLELL_RINGTYPE";
 
+    var CPS_CSV_HEADER2 = "Kontaktname,Delete_Contact,Rename_Contact,Kommentare," +
+        "Delete_FiveToneCalls,F\u00fcnf-Ton-Rufe - Telegramm,F\u00fcnf-Ton-Rufe - Adresse," +
+        "Delete_MDCCalls,MDC-Rufe - Ruf-ID (Hex),MDC-Rufe - MDC-System,MDC-Rufe - Revert-Kanalzone,MDC-Rufe - Quittungskanal,MDC-Rufe - TPL/DPL ausschlie\u00dfen,MDC-Rufe - Rufart," +
+        "Delete_QuikCallIICalls,Quik Call II-Rufe - Quik-Call II-System,Quik Call II-Rufe - Revert-Kanalzone,Quik Call II-Rufe - Quittungskanal,Quik Call II-Rufe - Rufformat,Quik Call II-Rufe - Freq. Ton A (Hz),Quik Call II-Rufe - Code Ton A,Quik Call II-Rufe - Freq. Ton B (Hz),Quik Call II-Rufe - Code Ton B,Quik Call II-Rufe - TPL/DPL ausschlie\u00dfen," +
+        "Delete_DigitalCalls,Digitale Rufe - Ruf-ID,Digitale Rufe - Routentyp,Digitale Rufe - Rufempfangston,Digitale Rufe - Ruftonart,Digitale Rufe - Hinweiston Textnachricht,Digitale Rufe - Rufart,Digitale Rufe - DU_OVCMCALL," +
+        "Delete_CapacityPlusCalls,Capacity Plus-Rufe - Ruf-ID,Capacity Plus-Rufe - Routentyp,Capacity Plus-Rufe - Rufempfangston,Capacity Plus-Rufe - Ruftonart,Capacity Plus-Rufe - Hinweiston Textnachricht,Capacity Plus-Rufe - Rufart," +
+        "Delete_PhoneCalls,Telefonanrufe - Nummer,Telefonanrufe - Klingelton";
+
     function generateContactsCsv(talkgroups) {
-        var rows = [CPS_CSV_HEADER];
+        var rows = [CPS_CSV_HEADER, CPS_CSV_HEADER2];
         talkgroups.forEach(function (tg) {
             var name = ("TG" + tg.id + " " + (tg.name || "")).trim().substring(0, 16);
             var row = name + ",False,,," +
                 "False,,," +
                 "False,,,,,,," +
-                "False,,,,,,,,," +
+                "False,,,,,,,,,," +
                 "False," + tg.id + ",Regular,False,No Style,Repetitive,Group Call,False," +
                 "False,,,,,,," +
                 "False,,";
