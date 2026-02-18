@@ -48,6 +48,7 @@
     "cps_add_tg_placeholder": "Aggiungi TG per ID o nome...",
     "cps_alias_format": "Formato alias canale",
     "cps_language": "Lingua CPS",
+    "cps_language_note": "La lingua selezionata deve corrispondere alla lingua della propria installazione CPS, altrimenti l'importazione fallir\u00e0.",
     "cps_step1_label": "Passo 1: Importa contatti",
     "cps_download_contacts": "Scarica contatti CSV",
     "cps_step2_label": "Passo 2: Incolla zona",
