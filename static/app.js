@@ -567,7 +567,7 @@
         var locale = CPS_LOCALE[lang] || CPS_LOCALE["de"];
         var rows = [CPS_CSV_HEADER, locale.header2];
         talkgroups.forEach(function (tg) {
-            var name = ("TG" + tg.id + " " + (tg.name || "")).trim().substring(0, 16);
+            var name = (tg.name || "TG" + tg.id).trim().substring(0, 16);
             var row = name + ",False,,," +
                 "False,,," +
                 "False,,,,,,," +
