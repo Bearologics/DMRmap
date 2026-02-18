@@ -50,7 +50,7 @@
     "cps_add_tg_placeholder": "Dodaj TG po ID lub nazwie...",
     "cps_alias_format": "Format aliasu kanału",
     "cps_language": "J\u0119zyk CPS",
-    "cps_language_note": "Wybrany j\u0119zyk musi odpowiada\u0107 j\u0119zykowi instalacji CPS, w przeciwnym razie import si\u0119 nie powiedzie.",
+    "cps_language_note": "Wybrany j\u0119zyk powinien odpowiada\u0107 j\u0119zykowi instalacji CPS. Je\u015bli si\u0119 nie zgadza, import zostanie wykonany, ale typ po\u0142\u0105czenia (po\u0142\u0105czenie grupowe) i ID grupy rozmownej nie zostan\u0105 przypisane i b\u0119d\u0105 musia\u0142y by\u0107 ustawione r\u0119cznie w CPS.",
     "cps_step1_label": "Krok 1: Importuj kontakty",
     "cps_download_contacts": "Pobierz kontakty CSV",
     "cps_step2_label": "Krok 2: Wklej strefę",

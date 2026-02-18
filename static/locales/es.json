@@ -48,7 +48,7 @@
     "cps_add_tg_placeholder": "Añadir TG por ID o nombre...",
     "cps_alias_format": "Formato de alias del canal",
     "cps_language": "Idioma CPS",
-    "cps_language_note": "El idioma seleccionado debe coincidir con el idioma de su instalaci\u00f3n de CPS, de lo contrario la importaci\u00f3n fallar\u00e1.",
+    "cps_language_note": "El idioma seleccionado debe coincidir con el idioma de su instalaci\u00f3n de CPS. Si no coincide, la importaci\u00f3n se realizar\u00e1, pero el tipo de llamada (llamada de grupo) y el ID del grupo de conversaci\u00f3n no se asignar\u00e1n y deber\u00e1n configurarse manualmente en CPS.",
     "cps_step1_label": "Paso 1: Importar contactos",
     "cps_download_contacts": "Descargar contactos CSV",
     "cps_step2_label": "Paso 2: Pegar zona",
