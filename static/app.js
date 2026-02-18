@@ -67,6 +67,8 @@
     var cpsRepeaterTags = document.getElementById("cps-repeater-tags");
     var cpsAddTgInput = document.getElementById("cps-add-tg-input");
     var cpsAcList = document.getElementById("cps-ac-list");
+    var cpsAliasFormat = document.getElementById("cps-alias-format");
+    var cpsContactsBtn = document.getElementById("cps-contacts-btn");
     var cpsDownloadBtn = document.getElementById("cps-download-btn");
     var cpsCopyBtn = document.getElementById("cps-copy-btn");
     var cpsChannelCount = document.getElementById("cps-channel-count");
@@ -325,7 +327,7 @@
             var cc = r.color_code;
             talkgroups.forEach(function (tg) {
                 var slot = tg.slot === "1" ? "SLOT1" : "SLOT2";
-                var alias = (r.callsign + " TG" + tg.id).substring(0, 16);
+                var alias = tg.name.substring(0, 16);
                 channels += buildChannel(alias, slot, cc, txHz, rxHz);
             });
         });
@@ -397,6 +399,8 @@
 
     function updateCpsButtons() {
         var hasData = getActiveRepeaters().length > 0 && cpsTalkgroups.length > 0;
+        var hasTgs = cpsTalkgroups.length > 0;
+        cpsContactsBtn.disabled = !hasTgs;
         cpsDownloadBtn.disabled = !hasData;
         cpsCopyBtn.disabled = !hasData;
     }
@@ -406,6 +410,15 @@
         document.body.style.overflow = "";
         cpsAddTgInput.value = "";
         cpsAcList.innerHTML = "";
+    }
+
+    function setSlot(idx, slot) {
+        cpsTalkgroups[idx].slot = slot;
+        if (cpsAliasFormat.value === "tg-ts") {
+            cpsTalkgroups[idx].name = formatTgAlias(cpsTalkgroups[idx].id, slot);
+        }
+        renderTgTable();
+        updateChannelCount();
     }
 
     function renderTgTable() {
@@ -420,7 +433,19 @@
 
             var tdName = document.createElement("td");
             tdName.className = "tg-name";
+            tdName.contentEditable = "true";
+            tdName.spellcheck = false;
             tdName.textContent = tg.name || t("cps_unknown_tg");
+            tdName.addEventListener("blur", (function (i) {
+                return function () {
+                    var val = tdName.textContent.trim().substring(0, 16);
+                    cpsTalkgroups[i].name = val;
+                    tdName.textContent = val || t("cps_unknown_tg");
+                };
+            })(idx));
+            tdName.addEventListener("keydown", function (e) {
+                if (e.key === "Enter") { e.preventDefault(); tdName.blur(); }
+            });
             tr.appendChild(tdName);
 
             var tdSlot = document.createElement("td");
@@ -435,10 +460,10 @@
             btn2.textContent = "TS2";
             if (tg.slot === "2") btn2.className = "active";
             btn1.addEventListener("click", (function (i) {
-                return function () { cpsTalkgroups[i].slot = "1"; renderTgTable(); updateChannelCount(); };
+                return function () { setSlot(i, "1"); };
             })(idx));
             btn2.addEventListener("click", (function (i) {
-                return function () { cpsTalkgroups[i].slot = "2"; renderTgTable(); updateChannelCount(); };
+                return function () { setSlot(i, "2"); };
             })(idx));
             toggle.appendChild(btn1);
             toggle.appendChild(btn2);
@@ -470,13 +495,72 @@
         });
     }
 
+    function formatTgAlias(tgId, slot) {
+        var fmt = cpsAliasFormat.value;
+        if (fmt === "tg-ts") {
+            return ("TG" + tgId + "-TS" + slot).substring(0, 16);
+        }
+        return ("TG" + tgId + " " + (tgName(tgId) || "")).trim().substring(0, 16);
+    }
+
+    function reformatAllAliases() {
+        cpsTalkgroups.forEach(function (tg) {
+            tg.name = formatTgAlias(tg.id, tg.slot);
+        });
+        renderTgTable();
+    }
+
+    function defaultSlot(tgId) {
+        var first = String(tgId).charAt(0);
+        return (first === "8" || first === "9") ? "2" : "1";
+    }
+
     function addTalkgroupById(tgId) {
         if (cpsTalkgroups.some(function (tg) { return tg.id === tgId; })) return;
-        cpsTalkgroups.push({ id: tgId, name: tgName(tgId), slot: "2" });
+        var slot = defaultSlot(tgId);
+        cpsTalkgroups.push({ id: tgId, name: formatTgAlias(tgId, slot), slot: slot });
         cpsTalkgroups.sort(function (a, b) { return a.id - b.id; });
         renderTgTable();
         updateChannelCount();
         updateCpsButtons();
+    }
+
+    var CPS_CSV_HEADER = "ContactName,Delete_Contact,Rename_Contact,Comments," +
+        "Delete_FiveToneCalls,FiveToneCalls-S5CLDLL_5TTELEGRAM,FiveToneCalls-S5CLDLL_5TCALLADD," +
+        "Delete_MDCCalls,MDCCalls-AU_CALLLSTID,MDCCalls-AU_MDCSYS,MDCCalls-AU_RVRTPERS_Zone,MDCCalls-AU_RVRTPERS,MDCCalls-AU_SPTPLDPL,MDCCalls-AU_CALLTYPE," +
+        "Delete_QuikCallIICalls,QuikCallIICalls-QU_QCIISYS,QuikCallIICalls-QU_RVRTPERS_Zone,QuikCallIICalls-QU_RVRTPERS,QuikCallIICalls-QU_CALLFORMAT,QuikCallIICalls-QU_TONEATXFRE,QuikCallIICalls-QU_CODEA,QuikCallIICalls-QU_TONEBTXFRE,QuikCallIICalls-QU_CODEB,QuikCallIICalls-QU_STRIPPLDPL," +
+        "Delete_DigitalCalls,DigitalCalls-DU_CALLLSTID,DigitalCalls-DU_ROUTETYPE,DigitalCalls-DU_CALLPRCDTNEN,DigitalCalls-DU_RINGTYPE,DigitalCalls-DU_TXTMSGALTTNTP,DigitalCalls-DU_CALLTYPE,DigitalCalls-DU_OVCMCALL," +
+        "Delete_CapacityPlusCalls,CapacityPlusCalls-CAPPLUSUCL_CALLLSTID,CapacityPlusCalls-CAPPLUSUCL_ROUTETYPE,CapacityPlusCalls-CAPPLUSUCL_CALLPRCDTNEN,CapacityPlusCalls-CAPPLUSUCL_RINGTYPE,CapacityPlusCalls-CAPPLUSUCL_TXTMSGALTTNTP,CapacityPlusCalls-CAPPLUSUCL_CALLTYPE," +
+        "Delete_PhoneCalls,PhoneCalls-PHNUCLELL_CALLID,PhoneCalls-PHNUCLELL_RINGTYPE";
+
+    function generateContactsCsv(talkgroups) {
+        var rows = [CPS_CSV_HEADER];
+        talkgroups.forEach(function (tg) {
+            var name = ("TG" + tg.id + " " + (tg.name || "")).trim().substring(0, 16);
+            var row = name + ",False,,," +
+                "False,,," +
+                "False,,,,,," +
+                "False,,,,,,,,," +
+                "False," + tg.id + ",Regular,False,No Style,Repetitive,Group Call,False," +
+                "False,,Regular,False,No Style,Repetitive,Group Call," +
+                "False,,No Style";
+            rows.push(row);
+        });
+        return rows.join("\r\n");
+    }
+
+    function downloadContactsCsv() {
+        if (!cpsTalkgroups.length) return;
+        var csv = generateContactsCsv(cpsTalkgroups);
+        var blob = new Blob([csv], { type: "text/csv" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "dmrmap-contacts.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     function downloadCpsXml() {
@@ -1277,6 +1361,8 @@
             }
         }
     });
+    cpsAliasFormat.addEventListener("change", reformatAllAliases);
+    cpsContactsBtn.addEventListener("click", downloadContactsCsv);
     cpsDownloadBtn.addEventListener("click", downloadCpsXml);
     cpsCopyBtn.addEventListener("click", copyCpsXml);
 

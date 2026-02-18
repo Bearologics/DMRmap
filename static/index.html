@@ -87,6 +87,13 @@
                 <p class="cps-exp-note" data-i18n="cps_experimental_note">This feature is still in development. Please review the generated output before importing.</p>
                 <div class="cps-repeater-tags" id="cps-repeater-tags"></div>
                 <div id="cps-tg-section">
+                    <div class="cps-alias-format">
+                        <label data-i18n="cps_alias_format">Channel alias format</label>
+                        <select id="cps-alias-format">
+                            <option value="tg-name" selected>TG262 Deutschland</option>
+                            <option value="tg-ts">TG262-TS2</option>
+                        </select>
+                    </div>
                     <table class="cps-tg-table">
                         <thead>
                             <tr>
@@ -106,8 +113,19 @@
                 </div>
             </div>
             <div class="cps-modal-footer">
-                <button type="button" id="cps-download-btn" class="cps-btn-primary" disabled data-i18n="cps_download_xml">Download XML</button>
-                <button type="button" id="cps-copy-btn" class="cps-btn-secondary" disabled data-i18n="cps_copy_xml">Copy to Clipboard</button>
+                <div class="cps-export-step">
+                    <span class="cps-step-label" data-i18n="cps_step1_label">Step 1: Import contacts</span>
+                    <div class="cps-step-buttons">
+                        <button type="button" id="cps-contacts-btn" class="cps-btn-primary" disabled data-i18n="cps_download_contacts">Download Contacts CSV</button>
+                    </div>
+                </div>
+                <div class="cps-export-step">
+                    <span class="cps-step-label" data-i18n="cps_step2_label">Step 2: Paste zone</span>
+                    <div class="cps-step-buttons">
+                        <button type="button" id="cps-download-btn" class="cps-btn-primary" disabled data-i18n="cps_download_xml">Download Zone XML</button>
+                        <button type="button" id="cps-copy-btn" class="cps-btn-secondary" disabled data-i18n="cps_copy_xml">Copy to Clipboard</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

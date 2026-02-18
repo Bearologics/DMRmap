@@ -785,6 +785,48 @@ html, body {
     opacity: 1;
 }
 
+.cps-alias-format {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.cps-alias-format label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.cps-alias-format select {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--input-bg);
+    color: var(--text);
+    outline: none;
+}
+
+.cps-tg-table .tg-name[contenteditable] {
+    cursor: text;
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    outline: none;
+}
+
+.cps-tg-table .tg-name[contenteditable]:hover {
+    background: var(--hover-bg);
+}
+
+.cps-tg-table .tg-name[contenteditable]:focus {
+    background: var(--input-bg);
+    box-shadow: 0 0 0 1px #4CAF50;
+}
+
 .cps-tg-table {
     width: 100%;
     border-collapse: collapse;
@@ -902,9 +944,29 @@ html, body {
 
 .cps-modal-footer {
     display: flex;
-    gap: 8px;
+    flex-direction: column;
+    gap: 10px;
     padding: 12px 18px;
     border-top: 1px solid var(--border-light);
+}
+
+.cps-export-step {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.cps-step-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.cps-step-buttons {
+    display: flex;
+    gap: 8px;
 }
 
 .cps-btn-primary {
