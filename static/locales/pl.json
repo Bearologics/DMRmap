@@ -49,6 +49,7 @@
     "cps_tg_slot": "Timeslot",
     "cps_add_tg_placeholder": "Dodaj TG po ID lub nazwie...",
     "cps_alias_format": "Format aliasu kanału",
+    "cps_language": "J\u0119zyk CPS",
     "cps_step1_label": "Krok 1: Importuj kontakty",
     "cps_download_contacts": "Pobierz kontakty CSV",
     "cps_step2_label": "Krok 2: Wklej strefę",

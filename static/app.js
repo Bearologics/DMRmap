@@ -68,6 +68,7 @@
     var cpsAddTgInput = document.getElementById("cps-add-tg-input");
     var cpsAcList = document.getElementById("cps-ac-list");
     var cpsAliasFormat = document.getElementById("cps-alias-format");
+    var cpsLanguage = document.getElementById("cps-language");
     var cpsContactsBtn = document.getElementById("cps-contacts-btn");
     var cpsDownloadBtn = document.getElementById("cps-download-btn");
     var cpsCopyBtn = document.getElementById("cps-copy-btn");
@@ -367,6 +368,7 @@
         renderTgTable();
         updateChannelCount();
         updateCpsButtons();
+        cpsLanguage.value = (getLocale() === "de") ? "de" : "en";
         translateDOM();
     }
 
@@ -531,23 +533,46 @@
         "Delete_CapacityPlusCalls,CapacityPlusCalls-CAPPLUSUCL_CALLLSTID,CapacityPlusCalls-CAPPLUSUCL_ROUTETYPE,CapacityPlusCalls-CAPPLUSUCL_CALLPRCDTNEN,CapacityPlusCalls-CAPPLUSUCL_RINGTYPE,CapacityPlusCalls-CAPPLUSUCL_TXTMSGALTTNTP,CapacityPlusCalls-CAPPLUSUCL_CALLTYPE," +
         "Delete_PhoneCalls,PhoneCalls-PHNUCLELL_CALLID,PhoneCalls-PHNUCLELL_RINGTYPE";
 
-    var CPS_CSV_HEADER2 = "Kontaktname,Delete_Contact,Rename_Contact,Kommentare," +
-        "Delete_FiveToneCalls,F\u00fcnf-Ton-Rufe - Telegramm,F\u00fcnf-Ton-Rufe - Adresse," +
-        "Delete_MDCCalls,MDC-Rufe - Ruf-ID (Hex),MDC-Rufe - MDC-System,MDC-Rufe - Revert-Kanalzone,MDC-Rufe - Quittungskanal,MDC-Rufe - TPL/DPL ausschlie\u00dfen,MDC-Rufe - Rufart," +
-        "Delete_QuikCallIICalls,Quik Call II-Rufe - Quik-Call II-System,Quik Call II-Rufe - Revert-Kanalzone,Quik Call II-Rufe - Quittungskanal,Quik Call II-Rufe - Rufformat,Quik Call II-Rufe - Freq. Ton A (Hz),Quik Call II-Rufe - Code Ton A,Quik Call II-Rufe - Freq. Ton B (Hz),Quik Call II-Rufe - Code Ton B,Quik Call II-Rufe - TPL/DPL ausschlie\u00dfen," +
-        "Delete_DigitalCalls,Digitale Rufe - Ruf-ID,Digitale Rufe - Routentyp,Digitale Rufe - Rufempfangston,Digitale Rufe - Ruftonart,Digitale Rufe - Hinweiston Textnachricht,Digitale Rufe - Rufart,Digitale Rufe - DU_OVCMCALL," +
-        "Delete_CapacityPlusCalls,Capacity Plus-Rufe - Ruf-ID,Capacity Plus-Rufe - Routentyp,Capacity Plus-Rufe - Rufempfangston,Capacity Plus-Rufe - Ruftonart,Capacity Plus-Rufe - Hinweiston Textnachricht,Capacity Plus-Rufe - Rufart," +
-        "Delete_PhoneCalls,Telefonanrufe - Nummer,Telefonanrufe - Klingelton";
+    var CPS_LOCALE = {
+        de: {
+            header2: "Kontaktname,Delete_Contact,Rename_Contact,Kommentare," +
+                "Delete_FiveToneCalls,F\u00fcnf-Ton-Rufe - Telegramm,F\u00fcnf-Ton-Rufe - Adresse," +
+                "Delete_MDCCalls,MDC-Rufe - Ruf-ID (Hex),MDC-Rufe - MDC-System,MDC-Rufe - Revert-Kanalzone,MDC-Rufe - Quittungskanal,MDC-Rufe - TPL/DPL ausschlie\u00dfen,MDC-Rufe - Rufart," +
+                "Delete_QuikCallIICalls,Quik Call II-Rufe - Quik-Call II-System,Quik Call II-Rufe - Revert-Kanalzone,Quik Call II-Rufe - Quittungskanal,Quik Call II-Rufe - Rufformat,Quik Call II-Rufe - Freq. Ton A (Hz),Quik Call II-Rufe - Code Ton A,Quik Call II-Rufe - Freq. Ton B (Hz),Quik Call II-Rufe - Code Ton B,Quik Call II-Rufe - TPL/DPL ausschlie\u00dfen," +
+                "Delete_DigitalCalls,Digitale Rufe - Ruf-ID,Digitale Rufe - Routentyp,Digitale Rufe - Rufempfangston,Digitale Rufe - Ruftonart,Digitale Rufe - Hinweiston Textnachricht,Digitale Rufe - Rufart,Digitale Rufe - DU_OVCMCALL," +
+                "Delete_CapacityPlusCalls,Capacity Plus-Rufe - Ruf-ID,Capacity Plus-Rufe - Routentyp,Capacity Plus-Rufe - Rufempfangston,Capacity Plus-Rufe - Ruftonart,Capacity Plus-Rufe - Hinweiston Textnachricht,Capacity Plus-Rufe - Rufart," +
+                "Delete_PhoneCalls,Telefonanrufe - Nummer,Telefonanrufe - Klingelton",
+            routeType: "Regul\u00e4r",
+            ringType: "Keine Art",
+            txtMsgAlertType: "Wiederholt",
+            callType: "Gruppenruf"
+        },
+        en: {
+            header2: "Contact Name,Delete_Contact,Rename_Contact,Comments," +
+                "Delete_FiveToneCalls,Five Tone Calls - Telegram,Five Tone Calls - Address," +
+                "Delete_MDCCalls,MDC Calls - Call ID (Hex),MDC Calls - MDC System,MDC Calls - Revert Channel Zone,MDC Calls - Revert Channel,MDC Calls - Strip TPL/DPL,MDC Calls - Call Type," +
+                "Delete_QuikCallIICalls,Quik Call II Calls - Quik Call II System,Quik Call II Calls - Revert Channel Zone,Quik Call II Calls - Revert Channel,Quik Call II Calls - Call Format,Quik Call II Calls - Tone A TX Freq (Hz),Quik Call II Calls - Code A,Quik Call II Calls - Tone B TX Freq (Hz),Quik Call II Calls - Code B,Quik Call II Calls - Strip TPL/DPL," +
+                "Delete_DigitalCalls,Digital Calls - Call ID,Digital Calls - Route Type,Digital Calls - Call Receive Tone,Digital Calls - Ring Style,Digital Calls - Text Message Alert Tone,Digital Calls - Call Type,Digital Calls - DU_OVCMCALL," +
+                "Delete_CapacityPlusCalls,Capacity Plus Calls - Call ID,Capacity Plus Calls - Route Type,Capacity Plus Calls - Call Receive Tone,Capacity Plus Calls - Ring Style,Capacity Plus Calls - Text Message Alert Tone,Capacity Plus Calls - Call Type," +
+                "Delete_PhoneCalls,Phone Calls - Number,Phone Calls - Ring Tone",
+            routeType: "Regular",
+            ringType: "No Style",
+            txtMsgAlertType: "Repetitive",
+            callType: "Group Call"
+        }
+    };
 
     function generateContactsCsv(talkgroups) {
-        var rows = [CPS_CSV_HEADER, CPS_CSV_HEADER2];
+        var lang = cpsLanguage.value || "de";
+        var locale = CPS_LOCALE[lang] || CPS_LOCALE["de"];
+        var rows = [CPS_CSV_HEADER, locale.header2];
         talkgroups.forEach(function (tg) {
             var name = ("TG" + tg.id + " " + (tg.name || "")).trim().substring(0, 16);
             var row = name + ",False,,," +
                 "False,,," +
                 "False,,,,,,," +
                 "False,,,,,,,,,," +
-                "False," + tg.id + ",Regular,False,No Style,Repetitive,Group Call,False," +
+                "False," + tg.id + "," + locale.routeType + ",False," + locale.ringType + "," + locale.txtMsgAlertType + "," + locale.callType + ",False," +
                 "False,,,,,,," +
                 "False,,";
             rows.push(row);
