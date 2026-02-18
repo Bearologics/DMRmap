@@ -305,43 +305,41 @@
             .replace(/'/g, "&apos;");
     }
 
-    function buildChannel(alias, slot, colorCode, txHz, rxHz) {
+    function formatFreq(mhz) {
+        return parseFloat(mhz).toFixed(6);
+    }
+
+    function buildChannel(alias, slot, colorCode, txFreq, rxFreq) {
         var slotName = slot === "SLOT1" ? "1" : "2";
-        return '        <set name="ConventionalPersonality" alias="' + escapeXml(alias) + '" key="DGTLCONV6PT25">\n' +
-            '          <field name="CP_PERSTYPE" Name="Digital">DGTLCONV6PT25</field>\n' +
-            '          <field name="CP_CNVPERSALIAS">' + escapeXml(alias) + '</field>\n' +
-            '          <field name="CP_SLTASSGMNT" Name="' + slotName + '">' + slot + '</field>\n' +
-            '          <field name="CP_COLORCODE">' + colorCode + '</field>\n' +
-            '          <field name="CP_TXFREQ">' + txHz + '</field>\n' +
-            '          <field name="CP_RXFREQ">' + rxHz + '</field>\n' +
-            '          <field name="CP_TXINHXPLEN" Name="Color Code Free">MTCHCLRCD</field>\n' +
-            '          <field name="CP_TOT">180</field>\n' +
-            '        </set>\n';
+        return '    <set name="ConventionalPersonality" alias="' + escapeXml(alias) + '" key="DGTLCONV6PT25">\n' +
+            '      <field name="CP_PERSTYPE" Name="Digital">DGTLCONV6PT25</field>\n' +
+            '      <field name="CP_CNVPERSALIAS">' + escapeXml(alias) + '</field>\n' +
+            '      <field name="CP_SLTASSGMNT" Name="' + slotName + '">' + slot + '</field>\n' +
+            '      <field name="CP_COLORCODE">' + colorCode + '</field>\n' +
+            '      <field name="CP_TXFREQ">' + txFreq + '</field>\n' +
+            '      <field name="CP_RXFREQ">' + rxFreq + '</field>\n' +
+            '      <field name="CP_TXINHXPLEN" Name="Color Code Free">MTCHCLRCD</field>\n' +
+            '      <field name="CP_TOT">180</field>\n' +
+            '    </set>\n';
     }
 
     function generateCpsXml(repeaters, talkgroups) {
         var channels = "";
         repeaters.forEach(function (r) {
-            var txHz = Math.round(r.freq_tx * 1000000);
-            var rxHz = Math.round(r.freq_rx * 1000000);
+            var txFreq = formatFreq(r.freq_tx);
+            var rxFreq = formatFreq(r.freq_rx);
             var cc = r.color_code;
             talkgroups.forEach(function (tg) {
                 var slot = tg.slot === "1" ? "SLOT1" : "SLOT2";
                 var alias = tg.name.substring(0, 16);
-                channels += buildChannel(alias, slot, cc, txHz, rxHz);
+                channels += buildChannel(alias, slot, cc, txFreq, rxFreq);
             });
         });
         return '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' +
             "<config>\n" +
-            '  <category name="Zone">\n' +
-            '    <set name="Zone" alias="DMRmap">\n' +
-            '      <field name="ZP_ZONEALIAS">DMRmap</field>\n' +
-            '      <field name="ZP_ZONETYPE" Name="Normal">NORMAL</field>\n' +
-            '      <collection name="ZoneItems">\n' +
+            '  <collection name="ZoneItems">\n' +
             channels +
-            "      </collection>\n" +
-            "    </set>\n" +
-            "  </category>\n" +
+            "  </collection>\n" +
             "</config>";
     }
 
@@ -539,11 +537,11 @@
             var name = ("TG" + tg.id + " " + (tg.name || "")).trim().substring(0, 16);
             var row = name + ",False,,," +
                 "False,,," +
-                "False,,,,,," +
+                "False,,,,,,," +
                 "False,,,,,,,,," +
                 "False," + tg.id + ",Regular,False,No Style,Repetitive,Group Call,False," +
-                "False,,Regular,False,No Style,Repetitive,Group Call," +
-                "False,,No Style";
+                "False,,,,,,," +
+                "False,,";
             rows.push(row);
         });
         return rows.join("\r\n");
