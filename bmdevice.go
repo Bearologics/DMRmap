@@ -119,6 +119,13 @@ func runBMDeviceSync(db *sql.DB) {
 			if resp.StatusCode == http.StatusNotFound {
 				log.Printf("BM device sync: 404 for %d (%s) — removing Brandmeister tag", rf.ID, rf.Callsign)
 				db.Exec(`UPDATE repeaters SET networks = array_remove(networks, 'Brandmeister'), last_polled=NOW() WHERE id = $1`, rf.ID)
+				insertChangelog(db, ChangelogEntry{
+					RepeaterID:  rf.ID,
+					Callsign:    rf.Callsign,
+					Source:      "bm_sync",
+					Action:      "remove_bm_tag",
+					Description: "BM API returned 404 — removed Brandmeister tag",
+				})
 				mu.Lock()
 				removedBM++
 				mu.Unlock()
@@ -194,6 +201,25 @@ func runBMDeviceSync(db *sql.DB) {
 				errors++
 			} else {
 				updated++
+				insertChangelog(db, ChangelogEntry{
+					RepeaterID:  rf.ID,
+					Callsign:    rf.Callsign,
+					Source:      "bm_sync",
+					Action:      "update_bm_data",
+					Description: "BM device sync updated device data",
+					NewValues: map[string]interface{}{
+						"last_seen":                lastSeen,
+						"bm_status":               device.Status,
+						"bm_status_text":           device.StatusText,
+						"hardware":                 device.Hardware,
+						"firmware":                 device.Firmware,
+						"pep":                      device.Pep,
+						"agl":                      device.Agl,
+						"website":                  device.Website,
+						"description":              desc,
+						"import_freq_inconsistent": freqInconsistent,
+					},
+				})
 			}
 			mu.Unlock()
 
@@ -201,6 +227,13 @@ func runBMDeviceSync(db *sql.DB) {
 			if device.LastKnownMaster == 0 || device.LastKnownMaster == 9999 {
 				if _, err := db.Exec(`UPDATE repeaters SET networks = array_remove(networks, 'Brandmeister') WHERE id = $1`, rf.ID); err == nil {
 					log.Printf("BM device sync: removed Brandmeister tag from %d (%s) — no valid master", rf.ID, rf.Callsign)
+					insertChangelog(db, ChangelogEntry{
+						RepeaterID:  rf.ID,
+						Callsign:    rf.Callsign,
+						Source:      "bm_sync",
+						Action:      "remove_bm_tag",
+						Description: fmt.Sprintf("Removed Brandmeister tag — no valid master (lastKnownMaster=%d)", device.LastKnownMaster),
+					})
 					mu.Lock()
 					removedBM++
 					mu.Unlock()

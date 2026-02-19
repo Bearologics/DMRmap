@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -581,6 +582,146 @@ func updateRepeater(db *sql.DB, r Repeater) error {
 		r.Website, r.Description,
 		r.LastSeen, r.BmStatus, r.BmStatusText)
 	return err
+}
+
+type ChangelogEntry struct {
+	RepeaterID  int
+	Callsign    string
+	Source      string
+	Action      string
+	Description string
+	OldValues   map[string]interface{}
+	NewValues   map[string]interface{}
+}
+
+func insertChangelog(db *sql.DB, entry ChangelogEntry) {
+	var oldJSON, newJSON interface{}
+	if entry.OldValues != nil {
+		if b, err := json.Marshal(entry.OldValues); err == nil {
+			oldJSON = string(b)
+		}
+	}
+	if entry.NewValues != nil {
+		if b, err := json.Marshal(entry.NewValues); err == nil {
+			newJSON = string(b)
+		}
+	}
+	_, err := db.Exec(
+		`INSERT INTO changelog (repeater_id, callsign, source, action, description, old_values, new_values)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+		entry.RepeaterID, entry.Callsign, entry.Source, entry.Action, entry.Description,
+		oldJSON, newJSON,
+	)
+	if err != nil {
+		log.Printf("changelog: failed to insert entry for repeater %d: %v", entry.RepeaterID, err)
+	}
+}
+
+func diffRepeater(old, new Repeater) (oldVals, newVals map[string]interface{}) {
+	oldVals = make(map[string]interface{})
+	newVals = make(map[string]interface{})
+
+	if old.Callsign != new.Callsign {
+		oldVals["callsign"] = old.Callsign
+		newVals["callsign"] = new.Callsign
+	}
+	if old.FreqTx != new.FreqTx {
+		oldVals["freq_tx"] = old.FreqTx
+		newVals["freq_tx"] = new.FreqTx
+	}
+	if old.FreqRx != new.FreqRx {
+		oldVals["freq_rx"] = old.FreqRx
+		newVals["freq_rx"] = new.FreqRx
+	}
+	if old.FreqOffset != new.FreqOffset {
+		oldVals["freq_offset"] = old.FreqOffset
+		newVals["freq_offset"] = new.FreqOffset
+	}
+	if old.Band != new.Band {
+		oldVals["band"] = old.Band
+		newVals["band"] = new.Band
+	}
+	if old.Lat != new.Lat {
+		oldVals["lat"] = old.Lat
+		newVals["lat"] = new.Lat
+	}
+	if old.Lng != new.Lng {
+		oldVals["lng"] = old.Lng
+		newVals["lng"] = new.Lng
+	}
+	if old.City != new.City {
+		oldVals["city"] = old.City
+		newVals["city"] = new.City
+	}
+	if old.State != new.State {
+		oldVals["state"] = old.State
+		newVals["state"] = new.State
+	}
+	if old.Country != new.Country {
+		oldVals["country"] = old.Country
+		newVals["country"] = new.Country
+	}
+	if old.ColorCode != new.ColorCode {
+		oldVals["color_code"] = old.ColorCode
+		newVals["color_code"] = new.ColorCode
+	}
+	if old.TsLinked != new.TsLinked {
+		oldVals["ts_linked"] = old.TsLinked
+		newVals["ts_linked"] = new.TsLinked
+	}
+	if old.Trustee != new.Trustee {
+		oldVals["trustee"] = old.Trustee
+		newVals["trustee"] = new.Trustee
+	}
+	if old.IpscNetwork != new.IpscNetwork {
+		oldVals["ipsc_network"] = old.IpscNetwork
+		newVals["ipsc_network"] = new.IpscNetwork
+	}
+	if strings.Join([]string(old.Networks), ",") != strings.Join([]string(new.Networks), ",") {
+		oldVals["networks"] = old.Networks
+		newVals["networks"] = new.Networks
+	}
+	if old.Hotspot != new.Hotspot {
+		oldVals["hotspot"] = old.Hotspot
+		newVals["hotspot"] = new.Hotspot
+	}
+	if old.Status != new.Status {
+		oldVals["status"] = old.Status
+		newVals["status"] = new.Status
+	}
+	if old.Hardware != new.Hardware {
+		oldVals["hardware"] = old.Hardware
+		newVals["hardware"] = new.Hardware
+	}
+	if old.Firmware != new.Firmware {
+		oldVals["firmware"] = old.Firmware
+		newVals["firmware"] = new.Firmware
+	}
+	if old.Pep != new.Pep {
+		oldVals["pep"] = old.Pep
+		newVals["pep"] = new.Pep
+	}
+	if old.Agl != new.Agl {
+		oldVals["agl"] = old.Agl
+		newVals["agl"] = new.Agl
+	}
+	if old.Website != new.Website {
+		oldVals["website"] = old.Website
+		newVals["website"] = new.Website
+	}
+	if old.Description != new.Description {
+		oldVals["description"] = old.Description
+		newVals["description"] = new.Description
+	}
+	if old.BmStatusText != new.BmStatusText {
+		oldVals["bm_status_text"] = old.BmStatusText
+		newVals["bm_status_text"] = new.BmStatusText
+	}
+
+	if len(oldVals) == 0 {
+		return nil, nil
+	}
+	return oldVals, newVals
 }
 
 func haversineKm(lat1, lng1, lat2, lng2 float64) float64 {
