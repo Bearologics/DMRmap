@@ -4,3 +4,6 @@ dmrmap
 compose.override.yml
 .env
 static/talkgroups.json
+node_modules/
+static/app.js
+static/app.js.map

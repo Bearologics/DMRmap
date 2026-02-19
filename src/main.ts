@@ -1,3 +1,11 @@
+// @ts-nocheck
+import { toMaidenhead, offsetPoint, getBearing, averageBearing, computeCorridorPolygon, heatColor } from "./geo";
+import { escapeHtml, escapeXml, formatFreq, formatTgAlias } from "./format";
+import { BM262_TALKGROUPS, tgName as _tgName, defaultSlot, searchTalkgroups as _searchTalkgroups } from "./talkgroups";
+import { buildChannel, generateCpsXml, generateContactsCsv, CPS_CSV_HEADER, CPS_LOCALE } from "./cps-motorola";
+import { generateAnytoneContactsCsv, generateAnytoneChannelsCsv, ANYTONE_CH_HEADER } from "./cps-anytone";
+import { getSelectedBand as _getSelectedBand, getSelectedNetworks as _getSelectedNetworks } from "./filters";
+import { buildPopup as _buildPopup } from "./popup";
 (function () {
     "use strict";
 
@@ -199,23 +207,6 @@
     // === Coordinates display ===
     var coordsEl = document.getElementById("coords");
 
-    function toMaidenhead(lat, lng) {
-        lng = lng + 180;
-        lat = lat + 90;
-        var loc = "";
-        loc += String.fromCharCode(65 + Math.floor(lng / 20));
-        loc += String.fromCharCode(65 + Math.floor(lat / 10));
-        lng = (lng % 20);
-        lat = (lat % 10);
-        loc += Math.floor(lng / 2);
-        loc += Math.floor(lat);
-        lng = (lng % 2) * 60;
-        lat = (lat % 1) * 60;
-        loc += String.fromCharCode(97 + Math.floor(lng / 5));
-        loc += String.fromCharCode(97 + Math.floor(lat / 2.5));
-        return loc;
-    }
-
     map.on("mousemove", function (e) {
         var lat = e.latlng.lat;
         var lng = e.latlng.lng;
@@ -230,125 +221,12 @@
     });
 
     // === Utilities ===
-    function getSelectedBand() {
-        var has2m = band2m.checked;
-        var has70cm = band70cm.checked;
-        if (has2m && has70cm) return "all";
-        if (has2m) return "2m";
-        if (has70cm) return "70cm";
-        return "all";
-    }
+    function getSelectedBand() { return _getSelectedBand(band2m.checked, band70cm.checked); }
+    function getSelectedNetworks() { return _getSelectedNetworks(netBm.checked, netDmrplus.checked, netTgif.checked, netOther.checked); }
 
-    function getSelectedNetworks() {
-        var nets = [];
-        if (netBm.checked) nets.push("BM");
-        if (netDmrplus.checked) nets.push("DMR+");
-        if (netTgif.checked) nets.push("TGIF");
-        if (netOther.checked) nets.push("Other");
-        if (nets.length === 4) return "all";
-        if (nets.length === 0) return "none";
-        return nets.join(",");
-    }
+    function tgName(id) { return _tgName(id, tgRegistry); }
+    function searchTalkgroups(query) { return _searchTalkgroups(query, tgRegistry); }
 
-    function escapeHtml(str) {
-        if (!str) return "";
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;");
-    }
-
-    // Fallback TG names from wiki.bm262.de for German-speaking region
-    var BM262_TALKGROUPS = {
-        "262": "Deutschland", "263": "MultiMode DL",
-        "2620": "Sachsen-Anhalt/Mecklenburg-Vorpommern", "2621": "Berlin/Brandenburg",
-        "2622": "Hamburg/Schleswig-Holstein", "2623": "Niedersachsen/Bremen",
-        "2624": "Nordrhein-Westfalen", "2625": "Rheinland-Pfalz/Saarland",
-        "2626": "Hessen", "2627": "Baden-W\u00fcrttemberg", "2628": "Bayern",
-        "2629": "Sachsen/Th\u00fcringen", "26200": "TAC 1", "26209": "Brandenburg",
-        "26212": "Berlin-City", "26220": "Grossraum Hamburg", "26221": "Hamburg-City",
-        "26222": "Ostholstein-Nord", "26223": "Chaoswelle", "26224": "Elbe-Weser",
-        "26225": "AFU-Nord", "26226": "DMR Netzverbund Nord", "26228": "Ostholstein S\u00fcd",
-        "26231": "NI Mitte", "26232": "Dreil\u00e4ndereck Mitte Deutschland", "26233": "TAC 3",
-        "26234": "NI-Sued", "26236": "NI-Nord", "26239": "NI Ost",
-        "26241": "Rheinland", "26242": "Muensterland", "26243": "Ruhrgebiet",
-        "26245": "Rheinland-Sued", "26249": "Siebengebirge", "26250": "Saarland",
-        "26256": "Eifel-Hunsrueck", "26257": "Siegerland", "26260": "Mittelhessen",
-        "26261": "Nordhessen", "26262": "Rhein-Main-Neckar", "26263": "Bergstrasse",
-        "26266": "TAC 4", "26270": "Stuttgart", "26271": "Baden",
-        "26272": "Neckar-Odenwald", "26273": "BW-Ostalb", "26274": "BW B\u00f6blingen",
-        "26275": "Schwarzwald Nord", "26276": "Neckar-Alb", "26277": "Schwarzwald",
-        "26278": "BW Herrenberg", "26279": "BW Mittlerer Neckar", "26280": "Niederbayern",
-        "26282": "Schwaben", "26283": "Region M\u00fcnchen", "26284": "Region Franken",
-        "26285": "Region Ingolstadt", "26286": "Coburg-Rennsteig",
-        "26287": "Allg\u00e4u-Bodensee", "26288": "Region Bayern Oberland",
-        "26289": "Oberpfalz", "26298": "Th\u00fcringen", "26299": "TAC 2",
-        "26300": "Multimode TAC 1", "26301": "Sachsen-Erzgebirge",
-        "26322": "D22 - Neue Medien", "26331": "NI Ost", "26333": "Multimode TAC 3",
-        "26338": "afu38", "26345": "Paderborn", "26346": "Ostwestfalen-Lippe",
-        "26347": "IGA Rhein-Erft", "26348": "Westmuensterland", "26349": "Hochsauerland",
-        "26366": "Multimode TAC 4", "26375": "Bodensee-Oberschwaben", "26377": "Ortenau",
-        "26384": "Schrobenhausen", "26399": "Multimode TAC2", "26426": "FM-Funknetz",
-        "26429": "DL-Nordwest", "262810": "Projekt Pegasus", "263112": "HiOrg-Talk EmComm",
-        "263113": "(Un)Wetter Netz", "263333": "Twitterrunde",
-        "263852": "DARC Dachau - C06 Runde", "264022": "Whitesticker"
-    };
-
-    function tgName(id) {
-        var key = String(id);
-        if (tgRegistry && tgRegistry[key]) return tgRegistry[key];
-        if (BM262_TALKGROUPS[key]) return BM262_TALKGROUPS[key];
-        return "";
-    }
-
-    function escapeXml(str) {
-        if (!str) return "";
-        return str
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&apos;");
-    }
-
-    function formatFreq(mhz) {
-        return parseFloat(mhz).toFixed(6);
-    }
-
-    function buildChannel(alias, slot, colorCode, txFreq, rxFreq) {
-        var slotName = slot === "SLOT1" ? "1" : "2";
-        return '    <set name="ConventionalPersonality" alias="' + escapeXml(alias) + '" key="DGTLCONV6PT25">\n' +
-            '      <field name="CP_PERSTYPE" Name="Digital">DGTLCONV6PT25</field>\n' +
-            '      <field name="CP_CNVPERSALIAS">' + escapeXml(alias) + '</field>\n' +
-            '      <field name="CP_SLTASSGMNT" Name="' + slotName + '">' + slot + '</field>\n' +
-            '      <field name="CP_COLORCODE">' + colorCode + '</field>\n' +
-            '      <field name="CP_TXFREQ">' + rxFreq + '</field>\n' +
-            '      <field name="CP_RXFREQ">' + txFreq + '</field>\n' +
-            '      <field name="CP_TXINHXPLEN" Name="Color Code Free">MTCHCLRCD</field>\n' +
-            '      <field name="CP_TOT">180</field>\n' +
-            '    </set>\n';
-    }
-
-    function generateCpsXml(repeaters, talkgroups) {
-        var channels = "";
-        repeaters.forEach(function (r) {
-            var txFreq = formatFreq(r.freq_tx);
-            var rxFreq = formatFreq(r.freq_rx);
-            var cc = r.color_code;
-            talkgroups.forEach(function (tg) {
-                var slot = tg.slot === "1" ? "SLOT1" : "SLOT2";
-                var alias = tg.name.substring(0, 16);
-                channels += buildChannel(alias, slot, cc, txFreq, rxFreq);
-            });
-        });
-        return '<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n' +
-            "<config>\n" +
-            '  <collection name="ZoneItems">\n' +
-            channels +
-            "  </collection>\n" +
-            "</config>";
-    }
 
     // === BrandMeister API ===
     function fetchTgRegistry() {
@@ -434,7 +312,7 @@
     function setSlot(idx, slot) {
         cpsTalkgroups[idx].slot = slot;
         if (cpsAliasFormat.value === "tg-ts") {
-            cpsTalkgroups[idx].name = formatTgAlias(cpsTalkgroups[idx].id, slot);
+            cpsTalkgroups[idx].name = formatTgAlias(cpsTalkgroups[idx].id, slot, cpsAliasFormat.value, tgName);
         }
         renderTgTable();
         updateChannelCount();
@@ -514,94 +392,26 @@
         });
     }
 
-    function formatTgAlias(tgId, slot) {
-        var fmt = cpsAliasFormat.value;
-        if (fmt === "tg-ts") {
-            return ("TG" + tgId + "-TS" + slot).substring(0, 16);
-        }
-        return ("TG" + tgId + " " + (tgName(tgId) || "")).trim().substring(0, 16);
-    }
-
     function reformatAllAliases() {
         cpsTalkgroups.forEach(function (tg) {
-            tg.name = formatTgAlias(tg.id, tg.slot);
+            tg.name = formatTgAlias(tg.id, tg.slot, cpsAliasFormat.value, tgName);
         });
         renderTgTable();
-    }
-
-    function defaultSlot(tgId) {
-        var first = String(tgId).charAt(0);
-        return (first === "8" || first === "9") ? "2" : "1";
     }
 
     function addTalkgroupById(tgId) {
         if (cpsTalkgroups.some(function (tg) { return tg.id === tgId; })) return;
         var slot = defaultSlot(tgId);
-        cpsTalkgroups.push({ id: tgId, name: formatTgAlias(tgId, slot), slot: slot });
+        cpsTalkgroups.push({ id: tgId, name: formatTgAlias(tgId, slot, cpsAliasFormat.value, tgName), slot: slot });
         cpsTalkgroups.sort(function (a, b) { return a.id - b.id; });
         renderTgTable();
         updateChannelCount();
         updateCpsButtons();
     }
 
-    var CPS_CSV_HEADER = "ContactName,Delete_Contact,Rename_Contact,Comments," +
-        "Delete_FiveToneCalls,FiveToneCalls-S5CLDLL_5TTELEGRAM,FiveToneCalls-S5CLDLL_5TCALLADD," +
-        "Delete_MDCCalls,MDCCalls-AU_CALLLSTID,MDCCalls-AU_MDCSYS,MDCCalls-AU_RVRTPERS_Zone,MDCCalls-AU_RVRTPERS,MDCCalls-AU_SPTPLDPL,MDCCalls-AU_CALLTYPE," +
-        "Delete_QuikCallIICalls,QuikCallIICalls-QU_QCIISYS,QuikCallIICalls-QU_RVRTPERS_Zone,QuikCallIICalls-QU_RVRTPERS,QuikCallIICalls-QU_CALLFORMAT,QuikCallIICalls-QU_TONEATXFRE,QuikCallIICalls-QU_CODEA,QuikCallIICalls-QU_TONEBTXFRE,QuikCallIICalls-QU_CODEB,QuikCallIICalls-QU_STRIPPLDPL," +
-        "Delete_DigitalCalls,DigitalCalls-DU_CALLLSTID,DigitalCalls-DU_ROUTETYPE,DigitalCalls-DU_CALLPRCDTNEN,DigitalCalls-DU_RINGTYPE,DigitalCalls-DU_TXTMSGALTTNTP,DigitalCalls-DU_CALLTYPE,DigitalCalls-DU_OVCMCALL," +
-        "Delete_CapacityPlusCalls,CapacityPlusCalls-CAPPLUSUCL_CALLLSTID,CapacityPlusCalls-CAPPLUSUCL_ROUTETYPE,CapacityPlusCalls-CAPPLUSUCL_CALLPRCDTNEN,CapacityPlusCalls-CAPPLUSUCL_RINGTYPE,CapacityPlusCalls-CAPPLUSUCL_TXTMSGALTTNTP,CapacityPlusCalls-CAPPLUSUCL_CALLTYPE," +
-        "Delete_PhoneCalls,PhoneCalls-PHNUCLELL_CALLID,PhoneCalls-PHNUCLELL_RINGTYPE";
-
-    var CPS_LOCALE = {
-        de: {
-            header2: "Kontaktname,Delete_Contact,Rename_Contact,Kommentare," +
-                "Delete_FiveToneCalls,F\u00fcnf-Ton-Rufe - Telegramm,F\u00fcnf-Ton-Rufe - Adresse," +
-                "Delete_MDCCalls,MDC-Rufe - Ruf-ID (Hex),MDC-Rufe - MDC-System,MDC-Rufe - Revert-Kanalzone,MDC-Rufe - Quittungskanal,MDC-Rufe - TPL/DPL ausschlie\u00dfen,MDC-Rufe - Rufart," +
-                "Delete_QuikCallIICalls,Quik Call II-Rufe - Quik-Call II-System,Quik Call II-Rufe - Revert-Kanalzone,Quik Call II-Rufe - Quittungskanal,Quik Call II-Rufe - Rufformat,Quik Call II-Rufe - Freq. Ton A (Hz),Quik Call II-Rufe - Code Ton A,Quik Call II-Rufe - Freq. Ton B (Hz),Quik Call II-Rufe - Code Ton B,Quik Call II-Rufe - TPL/DPL ausschlie\u00dfen," +
-                "Delete_DigitalCalls,Digitale Rufe - Ruf-ID,Digitale Rufe - Routentyp,Digitale Rufe - Rufempfangston,Digitale Rufe - Ruftonart,Digitale Rufe - Hinweiston Textnachricht,Digitale Rufe - Rufart,Digitale Rufe - DU_OVCMCALL," +
-                "Delete_CapacityPlusCalls,Capacity Plus-Rufe - Ruf-ID,Capacity Plus-Rufe - Routentyp,Capacity Plus-Rufe - Rufempfangston,Capacity Plus-Rufe - Ruftonart,Capacity Plus-Rufe - Hinweiston Textnachricht,Capacity Plus-Rufe - Rufart," +
-                "Delete_PhoneCalls,Telefonanrufe - Nummer,Telefonanrufe - Klingelton",
-            routeType: "Regul\u00e4r",
-            ringType: "Keine Art",
-            txtMsgAlertType: "Wiederholt",
-            callType: "Gruppenruf"
-        },
-        en: {
-            header2: "Contact Name,Delete_Contact,Rename_Contact,Comments," +
-                "Delete_FiveToneCalls,Five Tone Calls - Telegram,Five Tone Calls - Address," +
-                "Delete_MDCCalls,MDC Calls - Call ID (Hex),MDC Calls - MDC System,MDC Calls - Revert Channel Zone,MDC Calls - Revert Channel,MDC Calls - Strip TPL/DPL,MDC Calls - Call Type," +
-                "Delete_QuikCallIICalls,Quik Call II Calls - Quik Call II System,Quik Call II Calls - Revert Channel Zone,Quik Call II Calls - Revert Channel,Quik Call II Calls - Call Format,Quik Call II Calls - Tone A TX Freq (Hz),Quik Call II Calls - Code A,Quik Call II Calls - Tone B TX Freq (Hz),Quik Call II Calls - Code B,Quik Call II Calls - Strip TPL/DPL," +
-                "Delete_DigitalCalls,Digital Calls - Call ID,Digital Calls - Route Type,Digital Calls - Call Receive Tone,Digital Calls - Ring Style,Digital Calls - Text Message Alert Tone,Digital Calls - Call Type,Digital Calls - DU_OVCMCALL," +
-                "Delete_CapacityPlusCalls,Capacity Plus Calls - Call ID,Capacity Plus Calls - Route Type,Capacity Plus Calls - Call Receive Tone,Capacity Plus Calls - Ring Style,Capacity Plus Calls - Text Message Alert Tone,Capacity Plus Calls - Call Type," +
-                "Delete_PhoneCalls,Phone Calls - Number,Phone Calls - Ring Tone",
-            routeType: "Regular",
-            ringType: "No Style",
-            txtMsgAlertType: "Repetitive",
-            callType: "Group Call"
-        }
-    };
-
-    function generateContactsCsv(talkgroups) {
-        var lang = cpsLanguage.value || "de";
-        var locale = CPS_LOCALE[lang] || CPS_LOCALE["de"];
-        var rows = [CPS_CSV_HEADER, locale.header2];
-        talkgroups.forEach(function (tg) {
-            var name = (tg.name || "TG" + tg.id).trim().substring(0, 16);
-            var row = name + ",False,,," +
-                "False,,," +
-                "False,,,,,,," +
-                "False,,,,,,,,,," +
-                "False," + tg.id + "," + locale.routeType + ",False," + locale.ringType + "," + locale.txtMsgAlertType + "," + locale.callType + ",False," +
-                "False,,,,,,," +
-                "False,,";
-            rows.push(row);
-        });
-        return rows.join("\r\n");
-    }
-
     function downloadContactsCsv() {
         if (!cpsTalkgroups.length) return;
-        var csv = generateContactsCsv(cpsTalkgroups);
+        var csv = generateContactsCsv(cpsTalkgroups, cpsLanguage.value || "de");
         var blob = new Blob([csv], { type: "text/csv" });
         var url = URL.createObjectURL(blob);
         var a = document.createElement("a");
@@ -652,58 +462,6 @@
 
     // === Anytone CPS Export ===
 
-    function generateAnytoneContactsCsv(talkgroups) {
-        var rows = ["No.,Radio ID,Name,Call Type,Call Alert"];
-        talkgroups.forEach(function (tg, idx) {
-            var name = (tg.name || "TG" + tg.id).trim().substring(0, 16);
-            rows.push((idx + 1) + "," + tg.id + "," + name + ",Group Call,None");
-        });
-        return rows.join("\r\n");
-    }
-
-    var ANYTONE_CH_HEADER = "No.,Channel Name,Receive Frequency,Transmit Frequency," +
-        "Channel Type,Transmit Power,Band Width,CTCSS/DCS Decode,CTCSS/DCS Encode," +
-        "Contact,Contact Call Type,Contact TG/DMR ID,Radio ID," +
-        "Busy Lock/TX Permit,Squelch Mode,Optional Signal,DTMF ID,2Tone ID,5Tone ID,PTT ID," +
-        "Color Code,Slot,Scan List,Receive Group List,PTT Prohibit,Reverse," +
-        "Simplex TDMA,Slot Suit,AES Digital Encryption,Digital Encryption," +
-        "Call Confirmation,Talk Around(Simplex),Work Alone,Custom CTCSS," +
-        "2TONE Decode,Ranging,Through Mode,APRS RX,Analog APRS PTT Mode," +
-        "Digital APRS PTT Mode,APRS Report Type,Digital APRS Report Channel," +
-        "Correct Frequency[Hz],SMS Confirmation,Exclude channel from roaming," +
-        "DMR MODE,DataACK Disable,R5toneBot,R5ToneEot,Auto Scan," +
-        "Ana APRS TX Path,APRS TX Tone,APRS Signal Path,Digi APRS TX CH,Alert Tone";
-
-    function generateAnytoneChannelsCsv(repeaters, talkgroups) {
-        var rows = [ANYTONE_CH_HEADER];
-        var num = 0;
-        repeaters.forEach(function (r) {
-            var rxFreq = formatFreq(r.freq_tx);
-            var txFreq = formatFreq(r.freq_rx);
-            var cc = r.color_code || 1;
-            talkgroups.forEach(function (tg) {
-                num++;
-                var chName = (r.callsign + " " + tg.name).substring(0, 16);
-                var contactName = (tg.name || "TG" + tg.id).trim().substring(0, 16);
-                rows.push(
-                    num + "," + chName + "," + rxFreq + "," + txFreq + "," +
-                    "D-Digital,High,12.5K,Off,Off," +
-                    contactName + ",Group Call," + tg.id + ",1," +
-                    "Same Color Code,Carrier,Off,1,1,1,Off," +
-                    cc + "," + tg.slot + ",None,None,Off,Off," +
-                    "Off,Off,Normal Encryption,Off," +
-                    "Off,Off,Off,251.1," +
-                    "0,Off,Off,Off,Off," +
-                    "Off,Off,1," +
-                    "0,Off,0," +
-                    "0,0,0,0,Off," +
-                    "Off,Off,Off,1,Off,Off"
-                );
-            });
-        });
-        return rows.join("\r\n");
-    }
-
     function downloadAnytoneContactsCsv() {
         if (!cpsTalkgroups.length) return;
         var csv = generateAnytoneContactsCsv(cpsTalkgroups);
@@ -742,58 +500,7 @@
     }
 
     // === Popup ===
-    function buildPopup(r) {
-        var bandClass = r.band === "2m" ? "band-2m" : "band-70cm";
-        var html = '<div class="rptr-popup">';
-        html += '<h3><a href="https://brandmeister.network/?page=repeater&id=' + r.id + '" target="_blank" rel="noopener">' + escapeHtml(r.callsign) + '</a> <span class="band-tag ' + bandClass + '">' + escapeHtml(r.band) + "</span></h3>";
-        html += "<table>";
-        html += "<tr><td>" + t("popup_tx") + "</td><td>" + r.freq_tx.toFixed(4) + " MHz</td></tr>";
-        if (r.freq_rx)
-            html += "<tr><td>" + t("popup_rx") + "</td><td>" + r.freq_rx.toFixed(4) + " MHz</td></tr>";
-        if (r.freq_offset)
-            html +=
-                "<tr><td>" + t("popup_offset") + "</td><td>" +
-                escapeHtml(r.freq_offset) +
-                " MHz</td></tr>";
-        html += "<tr><td>" + t("popup_cc") + "</td><td>" + r.color_code + "</td></tr>";
-        var loc = escapeHtml(r.city);
-        if (r.state) loc += ", " + escapeHtml(r.state);
-        if (r.country) loc += ", " + escapeHtml(r.country);
-        html += "<tr><td>" + t("popup_location") + "</td><td>" + loc + "</td></tr>";
-        if (r.networks && r.networks.length)
-            html +=
-                "<tr><td>" + t("popup_network") + "</td><td>" +
-                r.networks.map(escapeHtml).join(", ") +
-                "</td></tr>";
-        if (r.trustee)
-            html +=
-                "<tr><td>" + t("popup_trustee") + "</td><td>" +
-                escapeHtml(r.trustee) +
-                "</td></tr>";
-        if (r.ts_linked)
-            html +=
-                "<tr><td>" + t("popup_timeslots") + "</td><td>" +
-                escapeHtml(r.ts_linked) +
-                "</td></tr>";
-        html +=
-            "<tr><td>" + t("popup_status") + "</td><td>" +
-            escapeHtml(r.status) +
-            "</td></tr>";
-        if (r.bm_status_text)
-            html += "<tr><td>" + t("popup_bm_status") + "</td><td>" + escapeHtml(r.bm_status_text) + "</td></tr>";
-        if (r.last_seen)
-            html += "<tr><td>" + t("popup_last_seen") + "</td><td>" + escapeHtml(r.last_seen.replace("T", " ").substring(0, 19)) + "</td></tr>";
-        if (r.hardware)
-            html += "<tr><td>" + t("popup_hardware") + "</td><td>" + escapeHtml(r.hardware) + "</td></tr>";
-        if (r.pep)
-            html += "<tr><td>" + t("popup_power") + "</td><td>" + r.pep + " W</td></tr>";
-        if (r.agl)
-            html += "<tr><td>" + t("popup_antenna") + "</td><td>" + r.agl + " m AGL</td></tr>";
-        if (r.inactive)
-            html += '<tr><td></td><td style="color:#ef5350;font-weight:600">' + t("popup_inactive") + '</td></tr>';
-        html += "</table></div>";
-        return html;
-    }
+    function buildPopup(r) { return _buildPopup(r, t); }
 
     // === Display markers ===
     function displayRepeaters(repeaters) {
@@ -945,57 +652,6 @@
     }
 
     // === Corridor visualization ===
-    function offsetPoint(lat, lng, bearing, distKm) {
-        var R = 6371;
-        var lat1 = lat * Math.PI / 180;
-        var lng1 = lng * Math.PI / 180;
-        var brng = bearing * Math.PI / 180;
-        var d = distKm / R;
-        var lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brng));
-        var lng2 = lng1 + Math.atan2(Math.sin(brng) * Math.sin(d) * Math.cos(lat1),
-            Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
-        return [lat2 * 180 / Math.PI, lng2 * 180 / Math.PI];
-    }
-
-    function computeCorridorPolygon(points, distKm) {
-        if (points.length < 2) return [];
-        var left = [];
-        var right = [];
-        for (var i = 0; i < points.length; i++) {
-            var bearing;
-            if (i === 0) {
-                bearing = getBearing(points[0], points[1]);
-            } else if (i === points.length - 1) {
-                bearing = getBearing(points[i - 1], points[i]);
-            } else {
-                var b1 = getBearing(points[i - 1], points[i]);
-                var b2 = getBearing(points[i], points[i + 1]);
-                bearing = averageBearing(b1, b2);
-            }
-            left.push(offsetPoint(points[i][0], points[i][1], bearing - 90, distKm));
-            right.push(offsetPoint(points[i][0], points[i][1], bearing + 90, distKm));
-        }
-        // Form a closed polygon: left side forward, right side backward
-        return left.concat(right.reverse());
-    }
-
-    function getBearing(p1, p2) {
-        var lat1 = p1[0] * Math.PI / 180;
-        var lat2 = p2[0] * Math.PI / 180;
-        var dLng = (p2[1] - p1[1]) * Math.PI / 180;
-        var y = Math.sin(dLng) * Math.cos(lat2);
-        var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    }
-
-    function averageBearing(b1, b2) {
-        var r1 = b1 * Math.PI / 180;
-        var r2 = b2 * Math.PI / 180;
-        var x = Math.cos(r1) + Math.cos(r2);
-        var y = Math.sin(r1) + Math.sin(r2);
-        return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    }
-
     function drawCorridor() {
         if (corridorLayer) {
             map.removeLayer(corridorLayer);
@@ -1203,18 +859,6 @@
     }
 
     // === Heatmap ===
-    function heatColor(intensity) {
-        var r, g;
-        if (intensity < 0.5) {
-            r = Math.round(255 * (intensity * 2));
-            g = 255;
-        } else {
-            r = 255;
-            g = Math.round(255 * (1 - (intensity - 0.5) * 2));
-        }
-        return "rgb(" + r + "," + g + ",0)";
-    }
-
     function applyHeatmapGlow(repeaterId, lat, lng) {
         var count = heatmapCounts[repeaterId] || 0;
         if (count === 0) return;
@@ -1505,28 +1149,6 @@
     // TG autocomplete
     var cpsAcIdx = -1;
     var cpsAcTimer = null;
-
-    function searchTalkgroups(query) {
-        if (!tgRegistry) return [];
-        var q = query.toLowerCase();
-        var isNum = /^\d+$/.test(query);
-        var results = [];
-        for (var id in tgRegistry) {
-            if (isNum ? id.indexOf(query) === 0 : tgRegistry[id].toLowerCase().indexOf(q) !== -1) {
-                results.push({ id: parseInt(id), name: tgRegistry[id] });
-            }
-            if (results.length >= 8) break;
-        }
-        // also search BM262 fallback
-        for (var bmId in BM262_TALKGROUPS) {
-            if (results.some(function (r) { return r.id === parseInt(bmId); })) continue;
-            if (isNum ? bmId.indexOf(query) === 0 : BM262_TALKGROUPS[bmId].toLowerCase().indexOf(q) !== -1) {
-                results.push({ id: parseInt(bmId), name: BM262_TALKGROUPS[bmId] });
-            }
-            if (results.length >= 8) break;
-        }
-        return results;
-    }
 
     function renderCpsAc(results) {
         cpsAcList.innerHTML = "";

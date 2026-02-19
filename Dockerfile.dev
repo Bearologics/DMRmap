@@ -1,5 +1,8 @@
 FROM golang:1.25-alpine
+RUN apk add --no-cache nodejs npm
 RUN go install github.com/air-verse/air@latest
 RUN wget -qO /usr/local/share/talkgroups.json https://api.brandmeister.network/v2/talkgroup
 WORKDIR /app
-CMD cp -n /usr/local/share/talkgroups.json static/talkgroups.json 2>/dev/null; air
+CMD cp -n /usr/local/share/talkgroups.json static/talkgroups.json 2>/dev/null; \
+    npm install --silent && npm run watch & \
+    air

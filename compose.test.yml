@@ -1,0 +1,11 @@
+services:
+  test:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+      - node_modules_test:/app/node_modules
+    command: sh -c "npm install --silent && npm test"
+
+volumes:
+  node_modules_test:

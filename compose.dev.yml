@@ -20,6 +20,7 @@ services:
       - .:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
+      - node_modules:/app/node_modules
     depends_on:
       - postgres
     environment:
@@ -32,4 +33,5 @@ services:
 volumes:
   go-mod-cache:
   go-build-cache:
+  node_modules:
   pgdata-dev:
