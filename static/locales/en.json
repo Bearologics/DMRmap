@@ -56,5 +56,11 @@
     "cps_copy_xml": "Copy to Clipboard",
     "cps_copied": "Copied!",
     "cps_unknown_tg": "Unknown",
-    "cps_channel_count": "{{channels}} channels ({{repeaters}} repeaters × {{tgs}} talk groups)"
+    "cps_channel_count": "{{channels}} channels ({{repeaters}} repeaters × {{tgs}} talk groups)",
+    "cps_type_label": "CPS type",
+    "cps_type_select": "Select CPS type...",
+    "cps_at_step1_label": "Step 1: Import talk groups",
+    "cps_at_download_tg": "Download Talkgroups CSV",
+    "cps_at_step2_label": "Step 2: Import channels",
+    "cps_at_download_ch": "Download Channels CSV"
 }

@@ -58,5 +58,11 @@
     "cps_copy_xml": "Kopiuj do schowka",
     "cps_copied": "Skopiowano!",
     "cps_unknown_tg": "Nieznany",
-    "cps_channel_count": "{{channels}} kanałów ({{repeaters}} przemienników × {{tgs}} grup)"
+    "cps_channel_count": "{{channels}} kanałów ({{repeaters}} przemienników × {{tgs}} grup)",
+    "cps_type_label": "Typ CPS",
+    "cps_type_select": "Wybierz typ CPS...",
+    "cps_at_step1_label": "Krok 1: Importuj grupy",
+    "cps_at_download_tg": "Pobierz grupy CSV",
+    "cps_at_step2_label": "Krok 2: Importuj kana\u0142y",
+    "cps_at_download_ch": "Pobierz kana\u0142y CSV"
 }

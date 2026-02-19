@@ -56,5 +56,11 @@
     "cps_copy_xml": "Copia negli appunti",
     "cps_copied": "Copiato!",
     "cps_unknown_tg": "Sconosciuto",
-    "cps_channel_count": "{{channels}} canali ({{repeaters}} ripetitori × {{tgs}} gruppi)"
+    "cps_channel_count": "{{channels}} canali ({{repeaters}} ripetitori × {{tgs}} gruppi)",
+    "cps_type_label": "Tipo CPS",
+    "cps_type_select": "Seleziona tipo CPS...",
+    "cps_at_step1_label": "Passo 1: Importa gruppi",
+    "cps_at_download_tg": "Scarica gruppi CSV",
+    "cps_at_step2_label": "Passo 2: Importa canali",
+    "cps_at_download_ch": "Scarica canali CSV"
 }

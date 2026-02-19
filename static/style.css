@@ -946,6 +946,36 @@ html, body {
     color: var(--text-fainter);
 }
 
+.cps-type-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cps-type-row label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.cps-type-row select {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 11px;
+    background: var(--input-bg);
+    color: var(--text);
+    outline: none;
+}
+
+#cps-export-motorola,
+#cps-export-anytone {
+    flex-direction: column;
+    gap: 10px;
+}
+
 .cps-modal-footer {
     display: flex;
     flex-direction: column;

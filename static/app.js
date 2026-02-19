@@ -73,6 +73,12 @@
     var cpsDownloadBtn = document.getElementById("cps-download-btn");
     var cpsCopyBtn = document.getElementById("cps-copy-btn");
     var cpsChannelCount = document.getElementById("cps-channel-count");
+    var cpsType = document.getElementById("cps-type");
+    var cpsExportMotorola = document.getElementById("cps-export-motorola");
+    var cpsExportAnytone = document.getElementById("cps-export-anytone");
+    var cpsMotorolaSettings = document.getElementById("cps-motorola-settings");
+    var cpsAtTgBtn = document.getElementById("cps-at-tg-btn");
+    var cpsAtChBtn = document.getElementById("cps-at-ch-btn");
 
     var cpsRepeaters = [];
     var cpsActiveRepeaters = {};
@@ -367,7 +373,8 @@
         renderRepeaterTags();
         renderTgTable();
         updateChannelCount();
-        updateCpsButtons();
+        cpsType.value = "";
+        onCpsTypeChange();
         cpsLanguage.value = (getLocale() === "de") ? "de" : "en";
         translateDOM();
     }
@@ -400,9 +407,21 @@
     function updateCpsButtons() {
         var hasData = getActiveRepeaters().length > 0 && cpsTalkgroups.length > 0;
         var hasTgs = cpsTalkgroups.length > 0;
+        // Motorola
         cpsContactsBtn.disabled = !hasTgs;
         cpsDownloadBtn.disabled = !hasData;
         cpsCopyBtn.disabled = !hasData;
+        // Anytone
+        cpsAtTgBtn.disabled = !hasTgs;
+        cpsAtChBtn.disabled = !hasData;
+    }
+
+    function onCpsTypeChange() {
+        var type = cpsType.value;
+        cpsMotorolaSettings.style.display = (type === "motorola") ? "" : "none";
+        cpsExportMotorola.style.display = (type === "motorola") ? "flex" : "none";
+        cpsExportAnytone.style.display = (type === "anytone") ? "flex" : "none";
+        updateCpsButtons();
     }
 
     function closeCpsModal() {
@@ -629,6 +648,89 @@
             cpsCopyBtn.textContent = t("cps_copied");
             setTimeout(function () { cpsCopyBtn.textContent = origText; }, 2000);
         });
+    }
+
+    // === Anytone CPS Export ===
+
+    function generateAnytoneContactsCsv(talkgroups) {
+        var rows = ["No.,Radio ID,Name,Call Type,Call Alert"];
+        talkgroups.forEach(function (tg, idx) {
+            var name = (tg.name || "TG" + tg.id).trim().substring(0, 16);
+            rows.push((idx + 1) + "," + tg.id + "," + name + ",Group Call,None");
+        });
+        return rows.join("\r\n");
+    }
+
+    var ANYTONE_CH_HEADER = "No.,Channel Name,Receive Frequency,Transmit Frequency," +
+        "Channel Type,Transmit Power,Band Width,CTCSS/DCS Decode,CTCSS/DCS Encode," +
+        "Contact,Contact Call Type,Contact TG/DMR ID,Radio ID," +
+        "Busy Lock/TX Permit,Squelch Mode,Optional Signal,DTMF ID,2Tone ID,5Tone ID,PTT ID," +
+        "Color Code,Slot,Scan List,Receive Group List,PTT Prohibit,Reverse," +
+        "Simplex TDMA,Slot Suit,AES Digital Encryption,Digital Encryption," +
+        "Call Confirmation,Talk Around(Simplex),Work Alone,Custom CTCSS," +
+        "2TONE Decode,Ranging,Through Mode,APRS RX,Analog APRS PTT Mode," +
+        "Digital APRS PTT Mode,APRS Report Type,Digital APRS Report Channel," +
+        "Correct Frequency[Hz],SMS Confirmation,Exclude channel from roaming," +
+        "DMR MODE,DataACK Disable,R5toneBot,R5ToneEot,Auto Scan," +
+        "Ana APRS TX Path,APRS TX Tone,APRS Signal Path,Digi APRS TX CH,Alert Tone";
+
+    function generateAnytoneChannelsCsv(repeaters, talkgroups) {
+        var rows = [ANYTONE_CH_HEADER];
+        var num = 0;
+        repeaters.forEach(function (r) {
+            var rxFreq = formatFreq(r.freq_tx);
+            var txFreq = formatFreq(r.freq_rx);
+            var cc = r.color_code || 1;
+            talkgroups.forEach(function (tg) {
+                num++;
+                var chName = (r.callsign + " " + tg.name).substring(0, 16);
+                var contactName = (tg.name || "TG" + tg.id).trim().substring(0, 16);
+                rows.push(
+                    num + "," + chName + "," + rxFreq + "," + txFreq + "," +
+                    "D-Digital,High,12.5K,Off,Off," +
+                    contactName + ",Group Call," + tg.id + ",1," +
+                    "Same Color Code,Carrier,Off,1,1,1,Off," +
+                    cc + "," + tg.slot + ",None,None,Off,Off," +
+                    "Off,Off,Normal Encryption,Off," +
+                    "Off,Off,Off,251.1," +
+                    "0,Off,Off,Off,Off," +
+                    "Off,Off,1," +
+                    "0,Off,0," +
+                    "0,0,0,0,Off," +
+                    "Off,Off,Off,1,Off,Off"
+                );
+            });
+        });
+        return rows.join("\r\n");
+    }
+
+    function downloadAnytoneContactsCsv() {
+        if (!cpsTalkgroups.length) return;
+        var csv = generateAnytoneContactsCsv(cpsTalkgroups);
+        var blob = new Blob([csv], { type: "text/csv" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "dmrmap-anytone-talkgroups.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function downloadAnytoneChannelsCsv() {
+        var active = getActiveRepeaters();
+        if (!cpsTalkgroups.length || !active.length) return;
+        var csv = generateAnytoneChannelsCsv(active, cpsTalkgroups);
+        var blob = new Blob([csv], { type: "text/csv" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "dmrmap-anytone-channels.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     function showCount(count) {
@@ -1393,9 +1495,12 @@
         }
     });
     cpsAliasFormat.addEventListener("change", reformatAllAliases);
+    cpsType.addEventListener("change", onCpsTypeChange);
     cpsContactsBtn.addEventListener("click", downloadContactsCsv);
     cpsDownloadBtn.addEventListener("click", downloadCpsXml);
     cpsCopyBtn.addEventListener("click", copyCpsXml);
+    cpsAtTgBtn.addEventListener("click", downloadAnytoneContactsCsv);
+    cpsAtChBtn.addEventListener("click", downloadAnytoneChannelsCsv);
 
     // TG autocomplete
     var cpsAcIdx = -1;

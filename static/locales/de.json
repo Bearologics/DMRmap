@@ -56,5 +56,11 @@
     "cps_copy_xml": "In Zwischenablage",
     "cps_copied": "Kopiert!",
     "cps_unknown_tg": "Unbekannt",
-    "cps_channel_count": "{{channels}} Kanäle ({{repeaters}} Relais × {{tgs}} Talkgroups)"
+    "cps_channel_count": "{{channels}} Kanäle ({{repeaters}} Relais × {{tgs}} Talkgroups)",
+    "cps_type_label": "CPS-Typ",
+    "cps_type_select": "CPS-Typ auswählen...",
+    "cps_at_step1_label": "Schritt 1: Talkgroups importieren",
+    "cps_at_download_tg": "Talkgroups CSV herunterladen",
+    "cps_at_step2_label": "Schritt 2: Kanäle importieren",
+    "cps_at_download_ch": "Kanäle CSV herunterladen"
 }
