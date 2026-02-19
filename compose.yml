@@ -10,7 +10,10 @@ services:
     restart: unless-stopped
 
   dmrmap:
-    build: .
+    build:
+      context: .
+      args:
+        GIT_COMMIT: ${GIT_COMMIT:-unknown}
     depends_on:
       - postgres
     environment:

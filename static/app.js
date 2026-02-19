@@ -1515,6 +1515,20 @@
 
     window.addEventListener("hashchange", checkHash);
 
+    // === Version ===
+    fetch("/api/version")
+        .then(function (resp) { return resp.json(); })
+        .then(function (data) {
+            if (data.version && data.version !== "dev" && data.version !== "unknown") {
+                var el = document.getElementById("app-version");
+                if (el) {
+                    el.textContent = data.version;
+                    el.parentElement.style.display = "";
+                }
+            }
+        })
+        .catch(function () {});
+
     // === Init ===
     fetchTgRegistry();
 

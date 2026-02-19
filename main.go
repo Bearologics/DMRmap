@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+var version = "dev"
+
 func main() {
 	dsn := envOr("DATABASE_URL", "postgres://dmrmap:dmrmap@localhost:5432/dmrmap?sslmode=disable")
 	jsonPath := envOr("JSON_PATH", "rptrs.json")
@@ -38,6 +40,7 @@ func main() {
 	mux.HandleFunc("/api/repeaters/route", handleRouteRepeaters(db))
 	mux.HandleFunc("/api/repeater", handleRepeaterByID(db))
 	mux.HandleFunc("/api/repeaters/search", handleSearchRepeaters(db))
+	mux.HandleFunc("/api/version", handleVersion())
 
 	if adminToken := os.Getenv("ADMIN_TOKEN"); adminToken != "" {
 		mux.HandleFunc("/admin/", handleAdminPage())
@@ -56,6 +59,13 @@ func main() {
 
 	log.Printf("Listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
+}
+
+func handleVersion() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"version":"` + version + `"}`))
+	}
 }
 
 func envOr(key, fallback string) string {

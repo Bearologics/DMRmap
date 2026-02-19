@@ -593,6 +593,10 @@ html, body {
     color: var(--text-faint);
 }
 
+.app-version code {
+    font-size: 10px;
+}
+
 /* Popups */
 
 .rptr-popup h3 {
