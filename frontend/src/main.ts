@@ -1248,9 +1248,13 @@ import { buildPopup as _buildPopup } from "./popup";
         .then(function (data) {
             if (data.version && data.version !== "dev" && data.version !== "unknown") {
                 var el = document.getElementById("app-version");
+                var link = document.getElementById("app-version-link") as HTMLAnchorElement;
                 if (el) {
                     el.textContent = data.version;
-                    el.parentElement.style.display = "";
+                    if (link && /^[0-9a-f]{7,40}$/.test(data.version)) {
+                        link.href = "https://git.kida.io/marcus/DMRmap/commit/" + data.version;
+                    }
+                    (el.closest(".app-version") as HTMLElement).style.display = "";
                 }
             }
         })
