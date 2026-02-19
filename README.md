@@ -23,7 +23,8 @@ A web app that visualizes DMR repeaters on an interactive map. Filter by band an
 ## Tech Stack
 
 - **Backend:** Go (stdlib `net/http`), PostgreSQL 17 via `pgx/v5`, migrations via `goose/v3`
-- **Frontend:** Vanilla JavaScript, Leaflet, i18next — no build step
+- **Frontend:** TypeScript (bundled with esbuild), Leaflet, i18next
+- **Testing:** Vitest (92 unit tests)
 - **Infrastructure:** Docker Compose, multi-stage Dockerfile
 
 ## External Services
@@ -36,7 +37,7 @@ A web app that visualizes DMR repeaters on an interactive map. Filter by band an
 | [Nominatim](https://nominatim.openstreetmap.org) | Address geocoding and autocomplete (client-side) | None |
 | [OSRM](https://project-osrm.org) | Driving route calculation (client-side) | None |
 
-The BrandMeister talk group registry is fetched once at Docker build time and bundled as `static/talkgroups.json`. It is used for talk group name resolution and autocomplete in CPS Studio.
+The BrandMeister talk group registry is fetched once at Docker build time and bundled as `frontend/static/talkgroups.json`. It is used for talk group name resolution and autocomplete in CPS Studio.
 
 ## Running with Docker
 
@@ -48,13 +49,19 @@ Open http://localhost:8080. PostgreSQL data is persisted in a named volume.
 
 ## Development
 
-Hot-reload with [air](https://github.com/air-verse/air):
+Hot-reload with [air](https://github.com/air-verse/air) (Go) and esbuild watch (TypeScript):
 
 ```sh
 docker compose -f compose.dev.yml up --build
 ```
 
 The dev container mounts the project directory, so changes to Go and frontend files are picked up automatically.
+
+### Running Tests
+
+```sh
+docker compose -f compose.test.yml run --rm test
+```
 
 ## Environment Variables
 
@@ -64,6 +71,8 @@ The dev container mounts the project directory, so changes to Go and frontend fi
 | `JSON_PATH` | `rptrs.json` | Path to RadioID repeater dump |
 | `BMRPTRS_PATH` | `bmrptrs.json` | Path to BrandMeister repeater dump |
 | `LISTEN_ADDR` | `:8080` | HTTP listen address |
+| `STATIC_DIR` | `static` | Path to static frontend assets |
+| `MIGRATIONS_DIR` | `migrations` | Path to SQL migration files |
 | `BM_SYNC` | *(disabled)* | Set to `true` to enable periodic BrandMeister device sync |
 | `ADMIN_TOKEN` | *(disabled)* | Set to enable the admin interface at `/admin/` |
 
@@ -80,23 +89,34 @@ The dev container mounts the project directory, so changes to Go and frontend fi
 ## Project Structure
 
 ```
-├── main.go              # Route registration, env config
-├── db.go                # DB queries, Repeater struct, geo helpers
-├── handlers.go          # Public API handlers
-├── admin.go             # Admin auth middleware + admin API
-├── bmdevice.go          # BrandMeister device sync
-├── migrations/          # SQL migrations (goose)
-├── static/
-│   ├── app.js           # Frontend application logic
-│   ├── style.css        # Styles with dark mode support
-│   ├── index.html       # Single-page HTML shell
-│   ├── i18n.js          # i18next initialization
-│   ├── locales/         # Translation files (en, de, es, fr, it, pl)
-│   └── lib/             # Vendored JS libraries (Leaflet, i18next, socket.io)
+├── backend/
+│   ├── main.go          # Route registration, env config
+│   ├── db.go            # DB queries, Repeater struct, geo helpers
+│   ├── handlers.go      # Public API handlers
+│   ├── admin.go         # Admin auth middleware + admin API
+│   ├── bmdevice.go      # BrandMeister device sync
+│   ├── seed.go          # Database seeding from JSON dumps
+│   ├── migrate.go       # Goose migration runner
+│   ├── go.mod / go.sum
+│   ├── migrations/      # SQL migrations (goose)
+│   └── data/            # RadioID + BrandMeister JSON dumps
+├── frontend/
+│   ├── src/             # TypeScript source + tests
+│   ├── static/
+│   │   ├── index.html   # Single-page HTML shell
+│   │   ├── admin.html   # Admin interface
+│   │   ├── style.css    # Styles with dark mode support
+│   │   ├── i18n.js      # i18next initialization
+│   │   ├── locales/     # Translation files (en, de, es, fr, it, pl)
+│   │   └── lib/         # Vendored JS libraries (Leaflet, i18next, socket.io)
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vitest.config.ts
 ├── Dockerfile           # Production multi-stage build
-├── Dockerfile.dev       # Development image with air
+├── Dockerfile.dev       # Development image with air + esbuild
 ├── compose.yml          # Production Docker Compose
-└── compose.dev.yml      # Development Docker Compose
+├── compose.dev.yml      # Development Docker Compose
+└── compose.test.yml     # Test runner Docker Compose
 ```
 
 ## Data
