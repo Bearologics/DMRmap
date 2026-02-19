@@ -1,11 +1,12 @@
 FROM golang:1.25-alpine AS builder
-ARG GIT_COMMIT=unknown
+RUN apk add --no-cache git
 WORKDIR /build
+COPY .git ./.git
 COPY go.mod go.sum ./
 RUN go mod download
 COPY *.go ./
 COPY migrations/ ./migrations/
-RUN CGO_ENABLED=0 go build -ldflags "-X main.version=${GIT_COMMIT}" -o dmrmap .
+RUN CGO_ENABLED=0 go build -ldflags "-X main.version=$(git rev-parse --short HEAD)" -o dmrmap .
 
 FROM alpine:3.19
 WORKDIR /app
