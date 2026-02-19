@@ -317,8 +317,8 @@
             '      <field name="CP_CNVPERSALIAS">' + escapeXml(alias) + '</field>\n' +
             '      <field name="CP_SLTASSGMNT" Name="' + slotName + '">' + slot + '</field>\n' +
             '      <field name="CP_COLORCODE">' + colorCode + '</field>\n' +
-            '      <field name="CP_TXFREQ">' + txFreq + '</field>\n' +
-            '      <field name="CP_RXFREQ">' + rxFreq + '</field>\n' +
+            '      <field name="CP_TXFREQ">' + rxFreq + '</field>\n' +
+            '      <field name="CP_RXFREQ">' + txFreq + '</field>\n' +
             '      <field name="CP_TXINHXPLEN" Name="Color Code Free">MTCHCLRCD</field>\n' +
             '      <field name="CP_TOT">180</field>\n' +
             '    </set>\n';
