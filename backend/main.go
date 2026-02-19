@@ -13,6 +13,8 @@ func main() {
 	jsonPath := envOr("JSON_PATH", "rptrs.json")
 	bmrptrsPath := envOr("BMRPTRS_PATH", "bmrptrs.json")
 	addr := envOr("LISTEN_ADDR", ":8080")
+	staticDir := envOr("STATIC_DIR", "static")
+	migrationsDir := envOr("MIGRATIONS_DIR", "migrations")
 
 	db, err := openDB(dsn)
 	if err != nil {
@@ -20,7 +22,7 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := runMigrations(db); err != nil {
+	if err := runMigrations(db, migrationsDir); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
@@ -43,7 +45,7 @@ func main() {
 	mux.HandleFunc("/api/version", handleVersion())
 
 	if adminToken := os.Getenv("ADMIN_TOKEN"); adminToken != "" {
-		mux.HandleFunc("/admin/", handleAdminPage())
+		mux.HandleFunc("/admin/", handleAdminPage(staticDir))
 		adminAPI := http.NewServeMux()
 		adminAPI.HandleFunc("/admin/api/repeaters", handleAdminRepeaters(db))
 		adminAPI.HandleFunc("/admin/api/repeaters/update", handleAdminUpdateRepeater(db))
@@ -55,7 +57,7 @@ func main() {
 		log.Println("Admin interface enabled at /admin/")
 	}
 
-	mux.Handle("/", http.FileServer(http.Dir("static")))
+	mux.Handle("/", http.FileServer(http.Dir(staticDir)))
 
 	log.Printf("Listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))

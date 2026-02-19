@@ -1,10 +1,10 @@
 services:
   test:
     image: node:22-alpine
-    working_dir: /app
+    working_dir: /app/frontend
     volumes:
       - .:/app
-      - node_modules_test:/app/node_modules
+      - node_modules_test:/app/frontend/node_modules
     command: sh -c "npm install --silent && npm test"
 
 volumes:

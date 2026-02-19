@@ -1,9 +1,8 @@
 tmp/
-data/
 dmrmap
 compose.override.yml
 .env
-static/talkgroups.json
+frontend/static/talkgroups.json
 node_modules/
-static/app.js
-static/app.js.map
+frontend/static/app.js
+frontend/static/app.js.map

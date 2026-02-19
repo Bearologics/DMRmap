@@ -20,15 +20,17 @@ services:
       - .:/app
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/root/.cache/go-build
-      - node_modules:/app/node_modules
+      - node_modules:/app/frontend/node_modules
     depends_on:
       - postgres
     environment:
       - DATABASE_URL=postgres://dmrmap:dmrmap@postgres:5432/dmrmap?sslmode=disable
-      - JSON_PATH=/app/rptrs.json
-      - BMRPTRS_PATH=/app/bmrptrs.json
+      - JSON_PATH=/app/backend/data/rptrs.json
+      - BMRPTRS_PATH=/app/backend/data/bmrptrs.json
       - LISTEN_ADDR=:8080
       - ADMIN_TOKEN=adminparty
+      - STATIC_DIR=/app/frontend/static
+      - MIGRATIONS_DIR=/app/backend/migrations
 
 volumes:
   go-mod-cache:

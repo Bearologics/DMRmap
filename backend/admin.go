@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -24,9 +25,10 @@ func adminAuth(token string, next http.Handler) http.Handler {
 	})
 }
 
-func handleAdminPage() http.HandlerFunc {
+func handleAdminPage(staticDir string) http.HandlerFunc {
+	adminPath := filepath.Join(staticDir, "admin.html")
 	return func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/admin.html")
+		http.ServeFile(w, r, adminPath)
 	}
 }
 

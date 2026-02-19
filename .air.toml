@@ -1,10 +1,11 @@
 root = "."
 
 [build]
-  cmd = "go build -o ./tmp/dmrmap ."
+  cmd = "cd backend && go build -o /app/tmp/dmrmap ."
   bin = "./tmp/dmrmap"
   include_ext = ["go"]
-  exclude_dir = ["tmp", "static", "data", "migrations", "src", "node_modules"]
+  include_dir = ["backend"]
+  exclude_dir = ["tmp", "frontend"]
   delay = 500
 
 [misc]
