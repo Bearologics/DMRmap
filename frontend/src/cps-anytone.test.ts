@@ -14,6 +14,11 @@ const makeRepeater = (overrides: Partial<Repeater> = {}): Repeater => ({
     ...overrides,
 });
 
+/** Parse a quoted CSV row into unquoted values. */
+function parseCsvRow(row: string): string[] {
+    return row.split(",").map(v => v.replace(/^"|"$/g, ""));
+}
+
 describe("generateAnytoneContactsCsv", () => {
     const tgs: CpsTalkgroup[] = [
         { id: 262, name: "TG262 Deutschlan", slot: "1" },
@@ -71,34 +76,77 @@ describe("generateAnytoneChannelsCsv", () => {
         expect(lines).toHaveLength(3); // header + 2 channels
     });
 
-    it("has 55 columns per row (matching header)", () => {
+    it("has 56 columns per row (matching header)", () => {
         const csv = generateAnytoneChannelsCsv(repeaters, tgs);
         const lines = csv.split("\r\n");
         const headerCols = lines[0].split(",").length;
-        expect(headerCols).toBe(55);
+        expect(headerCols).toBe(56);
         for (let i = 1; i < lines.length; i++) {
             expect(lines[i].split(",")).toHaveLength(headerCols);
         }
     });
 
-    it("includes correct frequencies", () => {
+    it("all values are double-quoted", () => {
         const csv = generateAnytoneChannelsCsv(repeaters, tgs);
-        expect(csv).toContain("439.500000");
-        expect(csv).toContain("431.900000");
+        const lines = csv.split("\r\n");
+        for (let i = 0; i < lines.length; i++) {
+            const fields = lines[i].split(",");
+            for (const field of fields) {
+                expect(field).toMatch(/^".*"$/);
+            }
+        }
+    });
+
+    it("includes correct frequencies with 5 decimal places", () => {
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        expect(csv).toContain("439.50000");
+        expect(csv).toContain("431.90000");
     });
 
     it("includes color code and timeslot", () => {
         const csv = generateAnytoneChannelsCsv(repeaters, tgs);
         const lines = csv.split("\r\n");
-        const cols = lines[1].split(",");
-        // Color code at index 20, slot at index 21
+        const cols = parseCsvRow(lines[1]);
+        // RX Color Code at index 20, Slot at index 21
         expect(cols[20]).toBe("1");
         expect(cols[21]).toBe("1");
+    });
+
+    it("has empty Radio ID field", () => {
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const lines = csv.split("\r\n");
+        const cols = parseCsvRow(lines[1]);
+        expect(cols[12]).toBe("");
+    });
+
+    it("has Through Mode set to On", () => {
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const lines = csv.split("\r\n");
+        const cols = parseCsvRow(lines[1]);
+        expect(cols[36]).toBe("On");
+    });
+
+    it("has TxCC as last column set to 1", () => {
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const lines = csv.split("\r\n");
+        const cols = parseCsvRow(lines[1]);
+        expect(cols[55]).toBe("1");
     });
 });
 
 describe("ANYTONE_CH_HEADER", () => {
-    it("has 55 columns", () => {
-        expect(ANYTONE_CH_HEADER.split(",")).toHaveLength(55);
+    it("has 56 columns", () => {
+        expect(ANYTONE_CH_HEADER.split(",")).toHaveLength(56);
+    });
+
+    it("uses RX Color Code column name", () => {
+        expect(ANYTONE_CH_HEADER).toContain('"RX Color Code"');
+    });
+
+    it("has all values double-quoted", () => {
+        const fields = ANYTONE_CH_HEADER.split(",");
+        for (const field of fields) {
+            expect(field).toMatch(/^".*"$/);
+        }
     });
 });
