@@ -37,8 +37,25 @@ export function formatTgAlias(
     format: string,
     tgNameFn: (id: number) => string,
 ): string {
+    if (format === "call-tg-ts") {
+        return (tgId + "-" + slot).substring(0, 16);
+    }
     if (format === "tg-ts") {
         return ("TG" + tgId + "-TS" + slot).substring(0, 16);
     }
     return ("TG" + tgId + " " + (tgNameFn(tgId) || "")).trim().substring(0, 16);
+}
+
+/**
+ * Build the final channel alias for export, prepending callsign when format requires it.
+ */
+export function formatChannelAlias(
+    callsign: string,
+    tgAlias: string,
+    format: string,
+): string {
+    if (format === "call-tg-ts") {
+        return (callsign + " " + tgAlias).substring(0, 16);
+    }
+    return tgAlias.substring(0, 16);
 }

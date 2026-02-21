@@ -39,7 +39,7 @@ describe("generateCpsXml", () => {
     it("generates a valid XML document", () => {
         const repeaters = [makeRepeater()];
         const tgs: CpsTalkgroup[] = [{ id: 262, name: "TG262 Deutschlan", slot: "1" }];
-        const xml = generateCpsXml(repeaters, tgs);
+        const xml = generateCpsXml(repeaters, tgs, "tg-name");
         expect(xml).toContain('<?xml version="1.0"');
         expect(xml).toContain("<config>");
         expect(xml).toContain("</config>");
@@ -52,9 +52,29 @@ describe("generateCpsXml", () => {
             { id: 262, name: "TG262", slot: "1" },
             { id: 2628, name: "TG2628", slot: "1" },
         ];
-        const xml = generateCpsXml(repeaters, tgs);
+        const xml = generateCpsXml(repeaters, tgs, "tg-name");
         const matches = xml.match(/ConventionalPersonality/g);
         expect(matches).toHaveLength(4); // 2 repeaters × 2 TGs
+    });
+
+    it("uses tg name as alias with tg-name format", () => {
+        const repeaters = [makeRepeater()];
+        const tgs: CpsTalkgroup[] = [{ id: 262, name: "TG262 Deutschlan", slot: "1" }];
+        const xml = generateCpsXml(repeaters, tgs, "tg-name");
+        expect(xml).toContain('alias="TG262 Deutschlan"');
+    });
+
+    it("prepends callsign with call-tg-ts format", () => {
+        const repeaters = [
+            makeRepeater({ callsign: "DB0ABC", freq_tx: 439.5, freq_rx: 431.9 }),
+            makeRepeater({ callsign: "DB0XYZ", freq_tx: 438.2, freq_rx: 430.6 }),
+        ];
+        const tgs: CpsTalkgroup[] = [{ id: 262, name: "262-1", slot: "1" }];
+        const xml = generateCpsXml(repeaters, tgs, "call-tg-ts");
+        expect(xml).toContain('alias="DB0ABC 262-1"');
+        expect(xml).toContain('alias="DB0XYZ 262-1"');
+        expect(xml).toContain("<field name=\"CP_RXFREQ\">439.500000</field>");
+        expect(xml).toContain("<field name=\"CP_RXFREQ\">438.200000</field>");
     });
 });
 

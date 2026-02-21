@@ -1,5 +1,5 @@
 import type { Repeater, CpsTalkgroup } from "./types";
-import { escapeXml, formatFreq } from "./format";
+import { escapeXml, formatFreq, formatChannelAlias } from "./format";
 
 export const CPS_CSV_HEADER = "ContactName,Delete_Contact,Rename_Contact,Comments," +
     "Delete_FiveToneCalls,FiveToneCalls-S5CLDLL_5TTELEGRAM,FiveToneCalls-S5CLDLL_5TCALLADD," +
@@ -62,7 +62,7 @@ export function buildChannel(alias: string, slot: string, colorCode: number, txF
 }
 
 /** Generate a complete Motorola CPS zone XML document. */
-export function generateCpsXml(repeaters: Repeater[], talkgroups: CpsTalkgroup[]): string {
+export function generateCpsXml(repeaters: Repeater[], talkgroups: CpsTalkgroup[], aliasFormat: string): string {
     let channels = "";
     repeaters.forEach(function (r) {
         const txFreq = formatFreq(r.freq_tx);
@@ -70,7 +70,7 @@ export function generateCpsXml(repeaters: Repeater[], talkgroups: CpsTalkgroup[]
         const cc = r.color_code;
         talkgroups.forEach(function (tg) {
             const slot = tg.slot === "1" ? "SLOT1" : "SLOT2";
-            const alias = tg.name.substring(0, 16);
+            const alias = formatChannelAlias(r.callsign, tg.name, aliasFormat);
             channels += buildChannel(alias, slot, cc, txFreq, rxFreq);
         });
     });

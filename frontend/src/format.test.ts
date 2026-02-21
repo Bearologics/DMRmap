@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { escapeHtml, escapeXml, formatFreq, formatTgAlias } from "./format";
+import { escapeHtml, escapeXml, formatFreq, formatTgAlias, formatChannelAlias } from "./format";
 
 describe("escapeHtml", () => {
     it("escapes &, <, >, and quotes", () => {
@@ -65,5 +65,27 @@ describe("formatTgAlias", () => {
         const longName = (_id: number) => "Very Long Talkgroup Name";
         expect(formatTgAlias(12345, "1", "tg-name", longName)).toBe("TG12345 Very Lon");
         expect(formatTgAlias(12345, "1", "tg-name", longName)).toHaveLength(16);
+    });
+
+    it("formats as tgid-slot for call-tg-ts format", () => {
+        expect(formatTgAlias(262, "2", "call-tg-ts", mockTgName)).toBe("262-2");
+    });
+});
+
+describe("formatChannelAlias", () => {
+    it("prepends callsign for call-tg-ts format", () => {
+        expect(formatChannelAlias("DB0XYZ", "262-2", "call-tg-ts")).toBe("DB0XYZ 262-2");
+    });
+
+    it("returns tgAlias unchanged for tg-name format", () => {
+        expect(formatChannelAlias("DB0XYZ", "TG262 Deutschlan", "tg-name")).toBe("TG262 Deutschlan");
+    });
+
+    it("returns tgAlias unchanged for tg-ts format", () => {
+        expect(formatChannelAlias("DB0XYZ", "TG262-TS1", "tg-ts")).toBe("TG262-TS1");
+    });
+
+    it("truncates to 16 characters", () => {
+        expect(formatChannelAlias("DB0LONGCALL", "262262-2", "call-tg-ts")).toHaveLength(16);
     });
 });

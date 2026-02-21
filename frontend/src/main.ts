@@ -426,7 +426,7 @@ import { buildPopup as _buildPopup } from "./popup";
     function downloadCpsXml() {
         var active = getActiveRepeaters();
         if (!cpsTalkgroups.length || !active.length) return;
-        var xml = generateCpsXml(active, cpsTalkgroups);
+        var xml = generateCpsXml(active, cpsTalkgroups, cpsAliasFormat.value);
         var blob = new Blob([xml], { type: "application/xml" });
         var url = URL.createObjectURL(blob);
         var a = document.createElement("a");
@@ -441,7 +441,7 @@ import { buildPopup as _buildPopup } from "./popup";
     function copyCpsXml() {
         var active = getActiveRepeaters();
         if (!cpsTalkgroups.length || !active.length) return;
-        var xml = generateCpsXml(active, cpsTalkgroups);
+        var xml = generateCpsXml(active, cpsTalkgroups, cpsAliasFormat.value);
         var origText = cpsCopyBtn.textContent;
         navigator.clipboard.writeText(xml).then(function () {
             cpsCopyBtn.textContent = t("cps_copied");
@@ -479,7 +479,7 @@ import { buildPopup as _buildPopup } from "./popup";
     function downloadAnytoneChannelsCsv() {
         var active = getActiveRepeaters();
         if (!cpsTalkgroups.length || !active.length) return;
-        var csv = generateAnytoneChannelsCsv(active, cpsTalkgroups);
+        var csv = generateAnytoneChannelsCsv(active, cpsTalkgroups, cpsAliasFormat.value);
         var blob = new Blob([csv], { type: "text/csv" });
         var url = URL.createObjectURL(blob);
         var a = document.createElement("a");

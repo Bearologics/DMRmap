@@ -61,7 +61,7 @@ describe("generateAnytoneChannelsCsv", () => {
     const repeaters = [makeRepeater()];
 
     it("generates CSV with correct header", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         expect(lines[0]).toBe(ANYTONE_CH_HEADER);
     });
@@ -71,13 +71,13 @@ describe("generateAnytoneChannelsCsv", () => {
             { id: 262, name: "TG262", slot: "1" },
             { id: 2628, name: "TG2628", slot: "2" },
         ];
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs2);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs2, "tg-name");
         const lines = csv.split("\r\n");
         expect(lines).toHaveLength(3); // header + 2 channels
     });
 
     it("has 56 columns per row (matching header)", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         const headerCols = lines[0].split(",").length;
         expect(headerCols).toBe(56);
@@ -87,7 +87,7 @@ describe("generateAnytoneChannelsCsv", () => {
     });
 
     it("all values are double-quoted", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         for (let i = 0; i < lines.length; i++) {
             const fields = lines[i].split(",");
@@ -98,13 +98,13 @@ describe("generateAnytoneChannelsCsv", () => {
     });
 
     it("includes correct frequencies with 5 decimal places", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         expect(csv).toContain("439.50000");
         expect(csv).toContain("431.90000");
     });
 
     it("includes color code and timeslot", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         const cols = parseCsvRow(lines[1]);
         // RX Color Code at index 20, Slot at index 21
@@ -113,21 +113,21 @@ describe("generateAnytoneChannelsCsv", () => {
     });
 
     it("has empty Radio ID field", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         const cols = parseCsvRow(lines[1]);
         expect(cols[12]).toBe("");
     });
 
     it("has Through Mode set to On", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         const cols = parseCsvRow(lines[1]);
         expect(cols[36]).toBe("On");
     });
 
     it("has TxCC as last column set to 1", () => {
-        const csv = generateAnytoneChannelsCsv(repeaters, tgs);
+        const csv = generateAnytoneChannelsCsv(repeaters, tgs, "tg-name");
         const lines = csv.split("\r\n");
         const cols = parseCsvRow(lines[1]);
         expect(cols[55]).toBe("1");

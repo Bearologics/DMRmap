@@ -1,4 +1,5 @@
 import type { Repeater, CpsTalkgroup } from "./types";
+import { formatChannelAlias } from "./format";
 
 function q(v: string | number): string {
     return '"' + v + '"';
@@ -37,7 +38,7 @@ function formatFreq5(mhz: number | string): string {
 }
 
 /** Generate an Anytone CPS channels CSV. */
-export function generateAnytoneChannelsCsv(repeaters: Repeater[], talkgroups: CpsTalkgroup[]): string {
+export function generateAnytoneChannelsCsv(repeaters: Repeater[], talkgroups: CpsTalkgroup[], aliasFormat: string): string {
     const rows = [ANYTONE_CH_HEADER];
     let num = 0;
     repeaters.forEach(function (r) {
@@ -46,7 +47,7 @@ export function generateAnytoneChannelsCsv(repeaters: Repeater[], talkgroups: Cp
         const cc = r.color_code || 1;
         talkgroups.forEach(function (tg) {
             num++;
-            const chName = (r.callsign + " " + tg.name).substring(0, 16);
+            const chName = formatChannelAlias(r.callsign, tg.name, aliasFormat);
             const contactName = (tg.name || "TG" + tg.id).trim().substring(0, 16);
             rows.push([
                 num, chName, rxFreq, txFreq,
