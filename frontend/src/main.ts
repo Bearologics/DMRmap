@@ -1252,7 +1252,7 @@ import { buildPopup as _buildPopup } from "./popup";
                 if (el) {
                     el.textContent = data.version;
                     if (link && /^[0-9a-f]{7,40}$/.test(data.version)) {
-                        link.href = "https://git.kida.io/marcus/DMRmap/commit/" + data.version;
+                        link.href = "https://github.com/Bearologics/DMRmap/commit/" + data.version;
                     }
                     (el.closest(".app-version") as HTMLElement).style.display = "";
                 }
