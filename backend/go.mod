@@ -3,7 +3,7 @@ module dmrmap
 go 1.25.7
 
 require (
-	github.com/jackc/pgx/v5 v5.8.0
+	github.com/jackc/pgx/v5 v5.9.0
 	github.com/pressly/goose/v3 v3.26.0
 	golang.org/x/time v0.14.0
 )
